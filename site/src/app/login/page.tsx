@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
@@ -19,12 +20,16 @@ export default function LoginPage() {
     setBusy(true);
     setError('');
     const supabase = createClient();
-    const { error } =
+    const { data, error } =
       mode === 'login'
         ? await supabase.auth.signInWithPassword({ email, password })
         : await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
     setBusy(false);
-    if (error) return setError(error.message);
+    if (error) {
+      if (error.status === 429) return setError('בוצעו יותר מדי ניסיונות. נסי שוב בעוד כמה דקות.');
+      return setError(mode === 'login' ? 'אימייל או סיסמה שגויים' : error.message);
+    }
+    if (!data.session) return setInfo('נשלח אליך מייל אישור. אחרי האישור אפשר להתחבר.');
     const next = new URLSearchParams(window.location.search).get('next');
     router.push(next && next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard');
     router.refresh();
@@ -46,6 +51,11 @@ export default function LoginPage() {
         <button disabled={busy} className="w-full rounded-lg bg-fd-primary text-fd-primary-foreground py-2 font-medium disabled:opacity-60">
           {mode === 'login' ? 'כניסה' : 'יצירת חשבון'}
         </button>
+        {mode === 'login' && (
+          <Link href="/forgot-password" className="block text-sm underline">
+            שכחתי סיסמה
+          </Link>
+        )}
         <button type="button" className="text-sm underline" onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}>
           {mode === 'login' ? 'אין לי חשבון עדיין' : 'כבר יש לי חשבון'}
         </button>

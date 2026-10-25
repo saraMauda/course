@@ -29,8 +29,8 @@ function routeResponse(request: NextRequest) {
   return NextResponse.next();
 }
 
-const PUBLIC_PATHS = new Set(['/', '/login']);
-const SESSION_ONLY_PATHS = new Set(['/pending']); // signed in, not necessarily approved yet
+const PUBLIC_PATHS = new Set(['/', '/login', '/forgot-password', '/auth/callback']);
+const SESSION_ONLY_PATHS = new Set(['/pending', '/reset-password']); // signed in, not necessarily approved yet
 const API_LIKE = ['/api', '/llms', '/og'];
 
 export default async function proxy(request: NextRequest) {
@@ -95,5 +95,5 @@ export default async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|icon.svg).*)'],
 };
