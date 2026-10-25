@@ -51,6 +51,9 @@ export default async function AdminPage() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-bold">ניהול הקורס</h1>
         <div className="flex gap-2">
+          <Link href="/admin/attendance" className="rounded-lg bg-fd-primary px-3 py-1.5 text-sm font-medium text-fd-primary-foreground">
+            נוכחות
+          </Link>
           <Link href="/docs" className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-fd-accent">
             לחומרי הקורס
           </Link>
