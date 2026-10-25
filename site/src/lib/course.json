@@ -1,0 +1,254 @@
+{
+  "lessons": [
+    {
+      "num": "01",
+      "title": "תשתית ומושגי יסוד בעולם ה-LLM",
+      "division": 1,
+      "note": "",
+      "schedule": [],
+      "hasHomework": true,
+      "slug": "/docs/lessons/lesson-01"
+    },
+    {
+      "num": "02",
+      "title": "Prompt Engineering מתקדם – חלק א' (הנחיה ומבנה)",
+      "division": 1,
+      "note": "",
+      "schedule": [],
+      "hasHomework": true,
+      "slug": "/docs/lessons/lesson-02"
+    },
+    {
+      "num": "03",
+      "title": "Prompt Engineering מתקדם – חלק ב' (לוגיקה ואורקסטרציה)",
+      "division": 1,
+      "note": "גשר ל-Agents (חטיבה 2)",
+      "schedule": [
+        "פתיחה 10'",
+        "תאוריה 25'",
+        "Lab ReAct 40'",
+        "תרגול 15'",
+        "סיכום 10'"
+      ],
+      "hasHomework": true,
+      "slug": "/docs/lessons/lesson-03"
+    },
+    {
+      "num": "04",
+      "title": "Embeddings, המרחב הסמנטי ומדדי דמיון",
+      "division": 1,
+      "note": "בסיס ל-RAG (שיעור 5) ולפרויקט 1",
+      "schedule": [
+        "פתיחה 10'",
+        "תאוריה 25'",
+        "Lab חיפוש סמנטי 35'",
+        "תרגול 15'",
+        "סיכום 10'"
+      ],
+      "hasHomework": true,
+      "slug": "/docs/lessons/lesson-04"
+    },
+    {
+      "num": "05",
+      "title": "ארכיטקטורת RAG מעשית ואינדוקס וקטורי",
+      "division": 1,
+      "note": "סגירת מעגל לפני פרויקט 1",
+      "schedule": [
+        "פתיחה 10'",
+        "תאוריה 25'",
+        "דמו בחלון 15'",
+        "Lab Cohere+numpy+Gradio 35'",
+        "תרגול 15'",
+        "סיכום 10'"
+      ],
+      "hasHomework": true,
+      "slug": "/docs/lessons/lesson-05"
+    },
+    {
+      "num": "06",
+      "title": "הרחבת יכולות מודולרית – Skills Framework",
+      "division": 2,
+      "note": "מצטבר ל-פרויקט 2",
+      "schedule": [
+        "פתיחה 10'",
+        "תאוריה 25'",
+        "דמו בחלון 15'",
+        "Lab SKILL.md 30'",
+        "תרגול 15'",
+        "סיכום 10'"
+      ],
+      "hasHomework": true,
+      "slug": "/docs/lessons/lesson-06"
+    },
+    {
+      "num": "07",
+      "title": "תקשורת ופרוטוקולים – Model Context Protocol (MCP)",
+      "division": 2,
+      "note": "מצטבר ל-פרויקט 2",
+      "schedule": [
+        "פתיחה 10'",
+        "תאוריה 25'",
+        "דמו בחלון 15'",
+        "Lab Server/Client 30'",
+        "תרגול 15'",
+        "סיכום 10'"
+      ],
+      "hasHomework": true,
+      "slug": "/docs/lessons/lesson-07"
+    },
+    {
+      "num": "08",
+      "title": "תבניות חשיבה ואייג'נטים (Effective Agents & Workflows)",
+      "division": 2,
+      "note": "בסיס ל-LangChain/LangGraph",
+      "schedule": [
+        "פתיחה 10'",
+        "תאוריה 30'",
+        "תרשימי תבניות + דיון 30'",
+        "תרגול 20'",
+        "סיכום 10'"
+      ],
+      "hasHomework": true,
+      "slug": "/docs/lessons/lesson-08"
+    },
+    {
+      "num": "09",
+      "title": "פיתוח ב-LangChain – Harness, Tools ו-ReAct",
+      "division": 2,
+      "note": "מצטבר ל-פרויקט 2",
+      "schedule": [
+        "פתיחה 10'",
+        "תאוריה 20'",
+        "Live coding Agent+Tools 45'",
+        "תרגול 15'",
+        "סיכום 10'"
+      ],
+      "hasHomework": true,
+      "slug": "/docs/lessons/lesson-09"
+    },
+    {
+      "num": "10",
+      "title": "ניהול זיכרון וחיפוש חיצוני בזמן אמת",
+      "division": 2,
+      "note": "סגירה לפני פרויקט 2",
+      "schedule": [
+        "פתיחה 10'",
+        "תאוריה 20'",
+        "Lab Memory+Search 45'",
+        "תרגול 15'",
+        "סיכום 10'"
+      ],
+      "hasHomework": true,
+      "slug": "/docs/lessons/lesson-10"
+    },
+    {
+      "num": "11",
+      "title": "מבוא ל-LangGraph – State Machines ואייג'נטים כגראף",
+      "division": 3,
+      "note": "בסיס לפרויקט 3 (NotebookLM)",
+      "schedule": [
+        "פתיחה 10'",
+        "תאוריה 25'",
+        "Lab ReAct Graph 40'",
+        "תרגול 15'",
+        "סיכום 10'"
+      ],
+      "hasHomework": true,
+      "slug": "/docs/lessons/lesson-11"
+    },
+    {
+      "num": "12",
+      "title": "תהליכים מורכבים ב-LangGraph (Multi-Agent & Branching)",
+      "division": 3,
+      "note": "",
+      "schedule": [
+        "פתיחה 10'",
+        "תאוריה 25'",
+        "Lab Fan-out 40'",
+        "תרגול 15'",
+        "סיכום 10'"
+      ],
+      "hasHomework": true,
+      "slug": "/docs/lessons/lesson-12"
+    },
+    {
+      "num": "13",
+      "title": "Human-in-the-Loop (HITL) ועמידות בטעויות",
+      "division": 3,
+      "note": "חובה בפרויקט 3 (אישור מקורות)",
+      "schedule": [
+        "פתיחה 10'",
+        "תאוריה 25'",
+        "Prompt Injection 15'",
+        "Lab Breakpoints 30'",
+        "תרגול 15'",
+        "סיכום 10'"
+      ],
+      "hasHomework": true,
+      "slug": "/docs/lessons/lesson-13"
+    },
+    {
+      "num": "14",
+      "title": "ניטור, טרייסינג ו-Evaluation (LangSmith)",
+      "division": 3,
+      "note": "production mindset",
+      "schedule": [
+        "פתיחה 10'",
+        "תאוריה 25'",
+        "Tracing בחלון 15'",
+        "Evals – דמו בחלון 25'",
+        "Lab 20'",
+        "תרגול 15'",
+        "סיכום 10'"
+      ],
+      "hasHomework": true,
+      "slug": "/docs/lessons/lesson-14"
+    },
+    {
+      "num": "15",
+      "title": "ארכיטקטורת קצה-לקצה וסיכום הקורס (NotebookLM Deep Dive)",
+      "division": 3,
+      "note": "גשר ל-פרויקט 3",
+      "schedule": [
+        "פתיחה 10'",
+        "ארכיטקטורה 30'",
+        "Code walkthrough 40'",
+        "סיכום קורס 20'"
+      ],
+      "hasHomework": true,
+      "slug": "/docs/lessons/lesson-15"
+    }
+  ],
+  "projects": [
+    {
+      "slug": "/docs/projects/project-01",
+      "title": "פרויקט 1",
+      "description": "Customer Service Bot & Knowledge Base",
+      "isGuide": false
+    },
+    {
+      "slug": "/docs/projects/project-02",
+      "title": "פרויקט 2",
+      "description": "Autonomous Research Agent with MCP & Tools",
+      "isGuide": false
+    },
+    {
+      "slug": "/docs/projects/project-02-guide",
+      "title": "דף הנחיה · פרויקט 2",
+      "description": "Research Agent",
+      "isGuide": true
+    },
+    {
+      "slug": "/docs/projects/project-03",
+      "title": "פרויקט 3 (סיום)",
+      "description": "Enterprise NotebookLM Clone",
+      "isGuide": false
+    },
+    {
+      "slug": "/docs/projects/project-03-guide",
+      "title": "דף הנחיה · פרויקט 3",
+      "description": "Enterprise NotebookLM Clone",
+      "isGuide": true
+    }
+  ]
+}

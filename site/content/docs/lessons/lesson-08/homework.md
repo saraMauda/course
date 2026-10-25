@@ -1,0 +1,252 @@
+---
+title: "שיעורי בית"
+description: "שיעור 08 · תבניות חשיבה ואייג'נטים (Effective Agents & Workflows)"
+kind: "homework"
+lesson: "08"
+github: "https://github.com/saraMauda/course/tree/main/lessons/08-%D7%A9%D7%99%D7%A2%D7%95%D7%A8%D7%99-%D7%91%D7%99%D7%AA.md"
+---
+
+אותו דבר כמו בדמו של השיעור — רק במקום חברת סלולר, **ספרייה עירונית**.
+
+לא בונות אפליקציה חדשה. לא מוסיפות עיצוב. לא נוגעות ב-`llm_client.py`, ב-`recorder.py`, ב-`agent.py`, ב-`workflows.py` וב-`ask_the_model.py`.
+
+---
+
+## המטרה
+
+חלון Gradio שבו כותבות הודעה, בוחרות **תבנית**, ורואות:
+
+1. תשובה
+2. מי שולט בזרימה וכמה קריאות למודל
+3. מה נשלח למודל (כל הקריאות)
+4. מה קרה מאחורי הקלעים
+
+ארבע תבניות על אותה הודעה: **Agent**, **Routing**, **Parallelization**, **Evaluator–Optimizer**. הפעם על ספרייה, ואת **משווה בין התבניות**.
+
+---
+
+## שלב 0 — העתקה
+
+1. העתיקי את התיקייה `demos/08-effective-agents` לתיקייה חדשה בשם `08-homework-library`.
+2. **אל תעתיקי** את תיקיית `.venv`.
+
+---
+
+## שלב 1 — `tools.py`
+
+מחקי את התוכן, והדביקי **בדיוק** את זה:
+
+```python
+# המידע והפעולות של ספרייה עירונית.
+# המודל לעולם לא נכנס לכאן. ב-Agent הוא מבקש ואנחנו מריצות.
+# ב-Workflow אפילו הוא לא מבקש: הקוד קורא לפונקציות בעצמו.
+
+import json
+import re
+
+# מנויים וקנסות. (בדמו: חשבונות וחיובים)
+ACCOUNTS = {
+    "205": {
+        "member": "205",
+        "amount": "12 ₪",
+        "note": "קנס איחור של 12 ₪ על הספר «הנסיך הקטן», 12 ימי איחור.",
+        "refund_eligible": True,
+    },
+    "300": {
+        "member": "300",
+        "amount": "0 ₪",
+        "note": "אין קנסות פתוחים.",
+        "refund_eligible": False,
+    },
+}
+
+# בקשות השאלה. (בדמו: הזמנות)
+ORDERS = {
+    "41": {
+        "order": "41",
+        "status": "ממתין לאיסוף",
+        "eta": "עד יום חמישי",
+        "note": "בקשה 41: הספר «הארי פוטר» ממתין לאיסוף בדלפק עד יום חמישי.",
+    },
+    "52": {
+        "order": "52",
+        "status": "בתור",
+        "eta": "בעוד כשבוע",
+        "note": "בקשה 52: הספר «הארי פוטר» בתור, צפוי בעוד כשבוע.",
+    },
+}
+
+POLICIES = {
+    "איחור": "קנס של 1 ₪ ליום איחור, עד תקרה של 30 ₪. ביטול קנס רק אחרי אימות מול הדלפק.",
+    "השאלה": "השאלה ל-21 יום, עד 5 ספרים. הארכה אחת של 14 יום, באפליקציה.",
+}
+
+_ACCOUNT_RE = re.compile(r"(?:לקוח|מנוי|חבר)\s*(?:מספר\s*)?(\d+)")
+_ORDER_RE = re.compile(r"(?:הזמנה|השאלה|בקשה)\s*(?:מספר\s*)?(\d+)")
+
+
+def extract_account_id(text: str) -> str | None:
+    m = _ACCOUNT_RE.search(text or "")
+    return m.group(1) if m else None
+
+
+def extract_order_id(text: str) -> str | None:
+    m = _ORDER_RE.search(text or "")
+    return m.group(1) if m else None
+
+
+def guess_policy_topic(text: str) -> str | None:
+    """כלל פשוט של הקוד (לא של המודל): איזה נושא מדיניות מתאים להודעה."""
+    if any(w in text for w in ("איחור", "קנס")):
+        return "איחור"
+    if any(w in text for w in ("הארכה", "להאריך", "השאלה")):
+        return "השאלה"
+    return None
+
+
+def lookup_account(account_id: str) -> str:
+    key = account_id.strip()
+    data = ACCOUNTS.get(key, {"member": key, "error": "המנוי לא במאגר"})
+    return json.dumps(data, ensure_ascii=False)
+
+
+def lookup_order(order_id: str) -> str:
+    key = order_id.strip()
+    data = ORDERS.get(key, {"order": key, "error": "הבקשה לא במאגר"})
+    return json.dumps(data, ensure_ascii=False)
+
+
+def lookup_policy(topic: str) -> str:
+    topic = topic.strip()
+    policy = POLICIES.get(topic)
+    if policy is None:
+        for name, text in POLICIES.items():
+            if name in topic or topic in name:
+                policy, topic = text, name
+                break
+    if policy is None:
+        return json.dumps({"topic": topic, "error": "לא נמצאה מדיניות בנושא."}, ensure_ascii=False)
+    return json.dumps({"topic": topic, "policy": policy}, ensure_ascii=False)
+
+
+def run_action(name: str, action_input: str) -> str:
+    if name == "lookup_account":
+        return lookup_account(action_input)
+    if name == "lookup_policy":
+        return lookup_policy(action_input)
+    if name == "lookup_order":
+        return lookup_order(action_input)
+    return json.dumps({"error": f"פעולה לא מוכרת: {name}"}, ensure_ascii=False)
+```
+
+שימי לב לשלושה דברים בלבד:
+
+| בדמו של השיעור | אצלך |
+|----------------|------|
+| `lookup_account` — חשבון וחיובים | `lookup_account` — מנוי וקנסות (אותו שם פונקציה) |
+| `lookup_order` — הזמנה | `lookup_order` — בקשת השאלה |
+| `lookup_policy` — מדיניות סלולר | `lookup_policy` — מדיניות ספרייה |
+
+שמות הפונקציות **נשארים**. רק התוכן משתנה. כך הקוד של התבניות לא יודע באיזה תחום הוא עובד.
+
+---
+
+## שלב 2 — `prompt.py`
+
+ארבעה שינויים. תשאירי את שאר הקובץ כמו שהוא.
+
+**א. תפקיד** — חיפוש והחלפה בכל הקובץ: `חברת סלולר` ← `ספרייה עירונית`.
+
+**ב. `ROUTES`** — החליפי את הבלוק `ROUTES = { ... }` בזה:
+
+```python
+ROUTES = {
+    "account": "קנסות, איחורים ופרטי מנוי (בדרך כלל עם מספר מנוי)",
+    "order": "מצב בקשת השאלה או איסוף ספר (בדרך כלל עם מספר בקשה)",
+    "other": "כל דבר אחר – מחוץ לתחום",
+}
+```
+
+**ג. הודעות הקוד והדוגמאות** — החליפי את שלושת הבלוקים `OUT_OF_SCOPE`, `NO_ID` ו-`EXAMPLES` (כולל `EXAMPLE_TEXT`) בזה:
+
+```python
+OUT_OF_SCOPE = "אני עוזרת רק בקנסות ובבקשות השאלה, לא בנושא הזה."
+NO_ID = "כדי לבדוק אני צריכה מספר מנוי או מספר בקשה. אפשר לכתוב אותו?"
+
+# דוגמאות לכיתה: קנס, בקשת השאלה, מחוץ לתחום, חסר מספר.
+EXAMPLES = [
+    "למה חייבו אותי בקנס איחור? מספר מנוי 205",
+    "מה מצב בקשת ההשאלה שלי? מספר בקשה 41",
+    "מה מזג האוויר בתל אביב?",
+    "למה חייבו אותי בקנס?",
+]
+EXAMPLE_TEXT = EXAMPLES[0]
+```
+
+**ד. תיאור הפעולות ב-`AGENT_SYSTEM`** — בתוך הבלוק «פעולות:» החליפי את שלוש השורות `lookup_account`, `lookup_policy`, `lookup_order` בזה:
+
+```text
+- lookup_account — קנסות ופרטי מנוי לפי מספר מנוי
+- lookup_policy — מדיניות ספרייה לפי נושא, למשל «איחור» או «השאלה»
+- lookup_order — מצב בקשת השאלה לפי מספר בקשה
+```
+
+---
+
+## שלב 3 — `app.py`
+
+שני שינויים בטקסט שמופיע בחלון:
+
+| חפשי | החליפי ל- |
+|------|-----------|
+| `שיעור 08 — אותה הודעה` | `שיעורי בית 08 — אותה הודעה` |
+| `חיוב, הזמנה, מחוץ לתחום, חסר מספר` | `קנס, בקשת השאלה, מחוץ לתחום, חסר מספר` |
+
+---
+
+## מה אסור לגעת בו
+
+- `llm_client.py`, `recorder.py`, `agent.py`, `workflows.py`, `ask_the_model.py`
+- מבנה החלון ב-Gradio
+- לא משנות את `MAX_ROUNDS`, לא מוסיפות תבנית חמישית, לא מוסיפות LangChain או LangGraph (זה שיעורים 9 ו-11)
+
+---
+
+## איך בודקות שהצלחת
+
+הרצי `python app.py` מתוך התיקייה החדשה, ובדקי את שאלה 1 (קנס, מנוי 205) בכל ארבע התבניות:
+
+| # | תבנית | בדמו המקומי חייבים לראות |
+|---|-------|---------------------------|
+| 1 | Agent | **3** קריאות. ב«מה קרה»: המודל בחר `lookup_account`, אחר כך `lookup_policy`, אחר כך `finish`. |
+| 2 | Routing | **2** קריאות: Router ואחריו Composer. הקוד שלף את הנתונים בעצמו. |
+| 3 | Parallelization | **4** קריאות: שלוש חוקרות ומאחד. חוקרת «הזמנות» החזירה «אין מידע». |
+| 4 | Evaluator–Optimizer | **4** קריאות: סבב 1 נכשל (טיוטה עם «מיד», בלי «12 ₪»), סבב 2 עבר. |
+
+ועוד שתי בדיקות:
+
+| # | הודעה | תבנית | מה חייבים לראות |
+|---|-------|-------|------------------|
+| 5 | מה מזג האוויר בתל אביב? | Routing | **קריאה אחת** (רק ה-Router). הקוד ענה תשובה קבועה. |
+| 6 | למה חייבו אותי בקנס? (בלי מספר) | Routing | **קריאה אחת**, והקוד ביקש מספר מנוי. בלי מודל. |
+
+אם בדיקה 2 לא מוצאת נתונים — חזרי ל-`tools.py`. כנראה אחד השמות (`lookup_account`, `lookup_order`) שונה.
+
+> עם מודל אמיתי המספרים יכולים להשתנות (למשל Evaluator–Optimizer יעבור כבר בסבב 1). זה בסדר — תעדי מה קיבלת.
+
+---
+
+## שאלות להגשה
+
+1. **טבלה:** לשאלה 1 (קנס, מנוי 205), לכל אחת מארבע התבניות: מי שולט, כמה קריאות למודל.
+2. **בחירה:** מוקד הספרייה מקבל כל יום מאות הודעות מהשלוש הקבוצות האלה: קנסות, בקשות השאלה, ושאלות אחרות. איזו תבנית תבחרי, ולמה לא Agent? שלושה משפטים. (רמז: מי שולט, מה העלות, ומה קורה כשחסר מספר.)
+3. **Evaluator משלך:** כתבי קריטריון רביעי למעריכה (למשל על נימוס או על אורך). איך תוודאי שהוא לא גורם ללולאה אינסופית? (רמז: מה `MAX_ROUNDS` עושה?)
+4. **לפרויקט 2:** (א) איזו תבנית ראשית תבחרי ל-Research Agent? (ב) כתבי **5 כללי ניתוב**: מתי חיפוש ברשת, מתי MCP, מתי תשובה ישירה. (ג) הגדירי Evaluator: «מספיק מקורות? עדכניות? ציטוטים?».
+
+---
+
+## מה מגישות
+
+1. התיקייה `08-homework-library` (בלי `.venv`).
+2. צילום מסך של בדיקה 4: ההודעה, התשובה, «מי שולט», ו«מה קרה מאחורי הקלעים» עם שני הסבבים.
+3. התשובות לשאלות 1–4.

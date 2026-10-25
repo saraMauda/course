@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 420" role="img">
+  <rect width="1100" height="420" fill="#f4efe6"/>
+  <text x="550" y="42" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700" fill="#0f766e">Function Calling flow</text>
+
+  <rect x="40" y="80" width="160" height="70" rx="12" fill="#fff" stroke="#0f766e" stroke-width="2"/>
+  <text x="120" y="112" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" fill="#12263a">User</text>
+  <text x="120" y="136" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#5b6b7c">Query</text>
+
+  <polygon points="215,115 245,115 245,108 270,122 245,136 245,129 215,129" fill="#5b6b7c"/>
+
+  <rect x="280" y="80" width="180" height="70" rx="12" fill="#ffedd5" stroke="#c2410c" stroke-width="2"/>
+  <text x="370" y="112" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" fill="#12263a">Bot / Host</text>
+  <text x="370" y="136" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#5b6b7c">defines + runs</text>
+
+  <polygon points="475,115 505,115 505,108 530,122 505,136 505,129 475,129" fill="#5b6b7c"/>
+
+  <rect x="540" y="80" width="180" height="70" rx="12" fill="#0f766e"/>
+  <text x="630" y="112" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" fill="#fff">Model</text>
+  <text x="630" y="136" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#d9f2ee">chooses / writes</text>
+
+  <polygon points="735,115 765,115 765,108 790,122 765,136 765,129 735,129" fill="#5b6b7c"/>
+
+  <rect x="800" y="80" width="250" height="70" rx="12" fill="#fff" stroke="#0f766e" stroke-width="2"/>
+  <text x="925" y="112" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" fill="#12263a">External Tool</text>
+  <text x="925" y="136" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#5b6b7c">get_weather (Host runs it)</text>
+
+  <text x="550" y="220" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="16" fill="#12263a">1 Query - 2 Query+Tools - 3 Tool Call - 4 Run - 5 Result - 6 Response</text>
+  <text x="550" y="270" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" fill="#0f766e">The LLM does not run the function. It chooses. We run it.</text>
+</svg>

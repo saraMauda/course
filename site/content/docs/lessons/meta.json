@@ -1,0 +1,24 @@
+{
+  "title": "שיעורים",
+  "defaultOpen": true,
+  "pages": [
+    "---חטיבה 1 · יסודות, Prompting, RAG---",
+    "lesson-01",
+    "lesson-02",
+    "lesson-03",
+    "lesson-04",
+    "lesson-05",
+    "---חטיבה 2 · Skills, MCP, Agents, LangChain---",
+    "lesson-06",
+    "lesson-07",
+    "lesson-08",
+    "lesson-09",
+    "lesson-10",
+    "---חטיבה 3 · LangGraph, HITL, LangSmith---",
+    "lesson-11",
+    "lesson-12",
+    "lesson-13",
+    "lesson-14",
+    "lesson-15"
+  ]
+}

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>שיעור 01 · שקפים להקרנה</title>
+  <style>
+    :root {
+      --ink: #12263a;
+      --muted: #5b6b7c;
+      --paper: #f4efe6;
+      --card: #fffdf8;
+      --teal: #0f766e;
+      --line: #e4ddd3;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      font-family: "Assistant", "Segoe UI", Arial, sans-serif;
+      background: #1a2332;
+      color: var(--ink);
+    }
+    .deck { height: 100%; }
+    .slide {
+      display: none;
+      height: 100%;
+      padding: 48px 64px;
+      background: var(--paper);
+      flex-direction: column;
+    }
+    .slide.on { display: flex; }
+    .kicker {
+      color: var(--teal);
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      margin-bottom: 8px;
+    }
+    h1 { margin: 0 0 28px; font-size: 2.4rem; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--card);
+      border-radius: 16px;
+      overflow: hidden;
+      font-size: 1.25rem;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 16px 18px;
+      text-align: right;
+    }
+    th { background: #0f766e; color: #fff; }
+    tr:last-child td { border-bottom: none; }
+    .note {
+      margin-top: 24px;
+      font-size: 1.35rem;
+      background: #fff;
+      border-right: 6px solid var(--teal);
+      padding: 16px 20px;
+      border-radius: 12px;
+    }
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      font-size: 1.05rem;
+    }
+    .box {
+      background: #fff;
+      border: 2px solid var(--teal);
+      border-radius: 14px;
+      padding: 12px 14px;
+      min-width: 140px;
+      text-align: center;
+      font-weight: 700;
+    }
+    .box.model { background: #0f766e; color: #fff; }
+    .box.host { background: #ffedd5; border-color: #c2410c; }
+    .arrow { font-size: 1.4rem; color: var(--muted); }
+    .caption { color: var(--muted); margin-top: 6px; font-size: 0.95rem; font-weight: 400; }
+    ol.steps { font-size: 1.2rem; line-height: 1.8; }
+    .nav {
+      position: fixed;
+      bottom: 18px;
+      left: 24px;
+      right: 24px;
+      display: flex;
+      justify-content: space-between;
+      color: #fff;
+      font-size: 0.95rem;
+    }
+    button {
+      font: inherit;
+      font-weight: 700;
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 16px;
+      cursor: pointer;
+      background: #0f766e;
+      color: #fff;
+    }
+    code { background: #e7eeea; padding: 2px 6px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <div class="deck">
+    <section class="slide on" data-title="ML מול LLM">
+      <div class="kicker">שיעור 01 · הכנה / שקף 1</div>
+      <h1>ML קלאסי מול LLM</h1>
+      <table>
+        <tr><th></th><th>ML קלאסי</th><th>LLM</th></tr>
+        <tr><td>קלט</td><td>פיצ'רים מספריים / טבלאיים</td><td>טקסט (טוקנים)</td></tr>
+        <tr><td>משימה</td><td>סיווג / רגרסיה / אשכולות</td><td>הבנה + ייצור שפה + כלים</td></tr>
+        <tr><td>פלט</td><td>צפוי יחסית</td><td>הסתברותי – אותה שאלה, תשובות שונות</td></tr>
+        <tr><td>עדכון ידע</td><td>אימון מחדש</td><td>פרומפט, RAG, Tools</td></tr>
+        <tr><td>אינטראקציה</td><td>API / כפתורים</td><td>שפה טבעית + Function Calling</td></tr>
+      </table>
+      <div class="note">LLM הוא לא «עוד מודל ML». הוא רכיב הסתברותי במערכת – דורש הנדסת הקשר, לא רק אימון. הדגישי: <b>פלט הסתברותי</b> ו-<b>עדכון ידע בלי אימון</b>.</div>
+    </section>
+
+    <section class="slide" data-title="דיאגרמת Function Calling">
+      <div class="kicker">שיעור 01 · הכנה / שקף 2</div>
+      <h1>Function Calling – הזרימה</h1>
+      <div class="flow">
+        <div class="box">User<div class="caption">שאלה</div></div>
+        <div class="arrow">←</div>
+        <div class="box host">Bot / Host<div class="caption">מגדיר כלים, מריץ</div></div>
+        <div class="arrow">←</div>
+        <div class="box model">Model<div class="caption">בוחר / מנסח</div></div>
+        <div class="arrow">←</div>
+        <div class="box">כלי בעולם<div class="caption">get_weather</div></div>
+      </div>
+      <ol class="steps">
+        <li>משתמש שולח Query. הכלים רק <b>מוגדרים</b>, עדיין לא רצו.</li>
+        <li>Bot שולח למודל: השאלה + רשימת הכלים. המודל מחליט <b>האם</b> ואיזה.</li>
+        <li>חוזר Tool Call – שם + פרמטרים. <b>הקוד שלנו מריץ – לא המודל.</b></li>
+        <li>מחזירים למודל את התוצאה האמיתית.</li>
+        <li>המודל מנסח תשובה אנושית.</li>
+        <li>התשובה חוזרת למשתמש.</li>
+      </ol>
+      <div class="note">משפט עוגן: <b>ה-LLM לא מריץ את הפונקציה. הוא בוחר מה להריץ. אנחנו מריצות.</b></div>
+    </section>
+
+    <section class="slide" data-title="דמו">
+      <div class="kicker">שיעור 01 · הכנה / שקף 3</div>
+      <h1>הדמו – אותה שאלה, שני עולמות</h1>
+      <p style="font-size:1.35rem;line-height:1.7">
+        שאלה: <b>מה הטמפרטורה בתל אביב עכשיו?</b><br><br>
+        <b>בלי כלים</b> → ממציא או מתנצל. רואים את הפרומפט בלי כלים.<br>
+        <b>עם כלי get_weather</b> → המודל מבקש, אנחנו מריצות, הוא מנסח.<br>
+        בחלון רואים: תשובה, מה נשלח למודל, ומה קרה מאחורי הקלעים.
+      </p>
+      <div class="note">
+        זה לא שקף – זה חלון שרץ.<br>
+        תיקייה: <code>demos/01-function-calling/</code><br>
+        הרצה: לחיצה כפולה על <code>הרצה.bat</code> או <code>python app.py</code><br>
+        הסבר: <code>README.md</code> באותה תיקייה.
+      </div>
+    </section>
+  </div>
+  <div class="nav">
+    <button type="button" id="prev">הקודם</button>
+    <span id="pos"></span>
+    <button type="button" id="next">הבא · F11 למסך מלא</button>
+  </div>
+  <script>
+    const slides = [...document.querySelectorAll(".slide")];
+    let i = 0;
+    function show(n) {
+      i = (n + slides.length) % slides.length;
+      slides.forEach((s, idx) => s.classList.toggle("on", idx === i));
+      document.getElementById("pos").textContent = (i + 1) + " / " + slides.length + " · " + slides[i].dataset.title;
+    }
+    document.getElementById("prev").onclick = () => show(i - 1);
+    document.getElementById("next").onclick = () => show(i + 1);
+    document.addEventListener("keydown", (e) => {
+      if (["ArrowLeft", "ArrowDown", "PageDown", " "].includes(e.key)) show(i + 1);
+      if (["ArrowRight", "ArrowUp", "PageUp"].includes(e.key)) show(i - 1);
+    });
+    show(0);
+  </script>
+</body>
+</html>

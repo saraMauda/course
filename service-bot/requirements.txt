@@ -1,0 +1,4 @@
+cohere
+python-dotenv
+gradio
+numpy

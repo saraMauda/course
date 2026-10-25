@@ -1,0 +1,14 @@
+{
+  "title": "פרויקטים",
+  "defaultOpen": true,
+  "pages": [
+    "---פרויקט 1---",
+    "project-01",
+    "---פרויקט 2---",
+    "project-02",
+    "project-02-guide",
+    "---פרויקט 3---",
+    "project-03",
+    "project-03-guide"
+  ]
+}

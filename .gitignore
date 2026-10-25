@@ -1,6 +1,30 @@
+# secrets and local config
+.env
+.env.*
+!.env.example
+.claude/
+.cursor/
+
+# environments and caches
 .venv/
 venv/
 __pycache__/
 *.pyc
-.env
+node_modules/
+.next/
+.source/
+*.tsbuildinfo
+next-env.d.ts
 .DS_Store
+
+# teacher-only delivery scripts (not for students)
+מערכי-מסירה/
+
+# personal notes, source PDFs and drafts in the course root
+/*.txt
+/*.pdf
+
+# local vector stores / data created by running the demos
+chroma_db/
+*.sqlite3
+_demos-git-backup/
