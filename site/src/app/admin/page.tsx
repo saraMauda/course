@@ -45,13 +45,17 @@ export default async function AdminPage() {
   });
 
   const awaiting = rows.filter((r) => !r.approved);
+  const totalPending = rows.reduce((n, r) => n + r.pending, 0);
 
   return (
     <main className="p-6 max-w-4xl mx-auto">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-bold">ניהול הקורס</h1>
         <div className="flex gap-2">
-          <Link href="/admin/attendance" className="rounded-lg bg-fd-primary px-3 py-1.5 text-sm font-medium text-fd-primary-foreground">
+          <Link href="/admin/submissions" className="rounded-lg bg-fd-primary px-3 py-1.5 text-sm font-medium text-fd-primary-foreground">
+            בדיקת הגשות{totalPending > 0 ? ` (${totalPending})` : ''}
+          </Link>
+          <Link href="/admin/attendance" className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-fd-accent">
             נוכחות
           </Link>
           <Link href="/docs" className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-fd-accent">
