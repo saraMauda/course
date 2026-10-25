@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [busy, setBusy] = useState(false);
 
   async function submit(e: React.FormEvent) {
@@ -38,8 +39,10 @@ export default function LoginPage() {
           <input className={input} placeholder="שם מלא" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
         )}
         <input className={input} type="email" dir="ltr" placeholder="אימייל" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <input className={input} type="password" dir="ltr" placeholder="סיסמה" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} required />
+        <input className={input} type="password" dir="ltr" placeholder="סיסמה" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} required />
+        {mode === 'signup' && <p className="text-xs text-fd-muted-foreground">סיסמה של 8 תווים לפחות. הגישה לחומרים נפתחת אחרי אישור המרצה.</p>}
         {error && <p className="text-sm text-red-600">{error}</p>}
+        {info && <p className="text-sm text-green-600">{info}</p>}
         <button disabled={busy} className="w-full rounded-lg bg-fd-primary text-fd-primary-foreground py-2 font-medium disabled:opacity-60">
           {mode === 'login' ? 'כניסה' : 'יצירת חשבון'}
         </button>

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { SignOutButton } from '@/components/sign-out-button';
 import { redirect } from 'next/navigation';
 import { createClient, supabaseConfigured } from '@/lib/supabase/server';
 import { finalGrade, attendancePercent, defaultWeights, type Weights } from '@/lib/grades';
@@ -33,7 +34,10 @@ export default async function DashboardPage() {
   return (
     <main className="p-6 max-w-3xl mx-auto space-y-8">
       <header>
-        <h1 className="text-2xl font-bold">שלום {profile?.full_name || ''}</h1>
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="text-2xl font-bold">שלום {profile?.full_name || ''}</h1>
+          <SignOutButton />
+        </div>
         <div className="mt-4 grid grid-cols-3 gap-4">
           <Stat label="ציון מבחן" value={exam ? String(exam.grade) : '—'} />
           <Stat label="ציון משוער" value={final === null ? '—' : final.toFixed(1)} />

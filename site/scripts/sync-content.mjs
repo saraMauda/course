@@ -10,6 +10,13 @@ const courseRoot = path.resolve(siteRoot, '..');
 const docsOut = path.join(siteRoot, 'content', 'docs');
 const publicOut = path.join(siteRoot, 'public');
 
+// On a host that only has the site/ folder (e.g. Vercel with Root Directory = site) the course sources are
+// missing; the generated content is committed, so just use it.
+if (!fs.existsSync(path.join(courseRoot, 'lessons'))) {
+  console.log('course sources not found next to site/, using the committed content');
+  process.exit(0);
+}
+
 // Where "demos/..." links point. Override with COURSE_GITHUB_BASE env var.
 const GH_BASE =
   process.env.COURSE_GITHUB_BASE ?? 'https://github.com/saraMauda/course/tree/main';
