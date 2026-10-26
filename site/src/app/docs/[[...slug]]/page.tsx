@@ -13,6 +13,7 @@ import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { getPageImageUrl, getPageMarkdownUrl } from '@/lib/shared';
 import { LessonHeader } from '@/components/lesson-header';
 import { HomeworkSubmit } from '@/components/homework-submit';
+import { ProjectSubmit } from '@/components/project-submit';
 
 export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
   const params = await props.params;
@@ -20,7 +21,8 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
   if (!page) notFound();
 
   const MDX = page.data.body;
-  const markdownUrl = getPageMarkdownUrl(page).url;
+  const projectNum = params.slug?.[0] === 'projects' ? /^project-0([1-3])$/.exec(params.slug[1] ?? '')?.[1] : undefined;
+  const markdownUrl =getPageMarkdownUrl(page).url;
 
   return (
     <DocsPage toc={page.data.toc} full={page.data.full}>
@@ -46,6 +48,7 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
           })}
         />
         {page.data.kind === 'homework' && page.data.lesson && <HomeworkSubmit lesson={page.data.lesson} />}
+        {projectNum && <ProjectSubmit n={Number(projectNum)} />}
       </DocsBody>
     </DocsPage>
   );

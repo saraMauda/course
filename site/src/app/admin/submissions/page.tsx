@@ -2,6 +2,11 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient, supabaseConfigured } from '@/lib/supabase/server';
 import { GradeForm } from '@/components/grade-form';
+import { ItemChecks, type ItemView } from '@/components/item-checks';
+import { projectItems } from '@/lib/project-items';
+
+type StoredItems = Record<string, { text?: string; path?: string }>;
+const IMAGE_RE = /\.(png|jpe?g|gif|webp|svg)$/i;
 
 export default async function SubmissionsPage({ searchParams }: { searchParams: Promise<{ assignment?: string }> }) {
   if (!supabaseConfigured) redirect('/dashboard');
@@ -35,17 +40,28 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
   const { data: subs } = assignmentId
     ? await supabase
         .from('submissions')
-        .select('id, student_id, repo_url, screenshot_path, file_path, notes, submitted_at, grade, feedback, graded_at')
+        .select('id, student_id, repo_url, screenshot_path, file_path, items, notes, submitted_at, grade, feedback, graded_at')
         .eq('assignment_id', assignmentId)
         .order('submitted_at')
     : { data: [] };
 
   // private bucket: short-lived signed links, generated with the teacher's own session
-  const paths = (subs ?? []).flatMap((s) => [s.screenshot_path, s.file_path]).filter((p): p is string => Boolean(p));
+  const paths = (subs ?? [])
+    .flatMap((s) => [s.screenshot_path, s.file_path, ...Object.values((s.items ?? {}) as StoredItems).map((i) => i.path)])
+    .filter((p): p is string => Boolean(p));
   const signed = new Map<string, string>();
   if (paths.length) {
     const { data } = await supabase.storage.from('submissions').createSignedUrls(paths, 3600);
     for (const d of data ?? []) if (d.path && d.signedUrl) signed.set(d.path, d.signedUrl);
+  }
+  const project = Object.values(projectItems).find((p) => p.assignmentId === assignmentId);
+  const checksBy = new Map<number, Record<string, boolean>>();
+  if (project && subs?.length) {
+    const { data } = await supabase
+      .from('submission_checks')
+      .select('submission_id, item_key, ok')
+      .in('submission_id', subs.map((s) => s.id));
+    for (const c of data ?? []) checksBy.set(c.submission_id, { ...checksBy.get(c.submission_id), [c.item_key]: c.ok });
   }
   const nameOf = (id: string) => students?.find((s) => s.id === id)?.full_name || 'ללא שם';
 
@@ -108,6 +124,16 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={signed.get(s.screenshot_path)} alt="צילום מסך שהוגש" className="max-h-72 rounded-lg border" />
               </a>
+            )}
+            {project && (
+              <ItemChecks
+                submissionId={s.id}
+                initial={checksBy.get(s.id) ?? {}}
+                views={project.items.map((item): ItemView => {
+                  const v = ((s.items ?? {}) as StoredItems)[item.key];
+                  return { item, text: v?.text, url: v?.path ? signed.get(v.path) : undefined, isImage: v?.path ? IMAGE_RE.test(v.path) : false };
+                })}
+              />
             )}
             <GradeForm submissionId={s.id} grade={s.grade} feedback={s.feedback} graded={Boolean(s.graded_at)} />
           </li>
