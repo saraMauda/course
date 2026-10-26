@@ -48,9 +48,18 @@ export default async function AdminPage() {
   const totalPending = rows.reduce((n, r) => n + r.pending, 0);
 
   return (
-    <main className="p-6 max-w-4xl mx-auto">
+    <main className="p-4 sm:p-6 max-w-4xl mx-auto">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold">ניהול הקורס</h1>
+        <h1 className="text-2xl font-bold">
+          ניהול הקורס
+          {awaiting.length + totalPending > 0 && (
+            <span className="ms-3 text-sm font-medium text-amber-700 dark:text-amber-400">
+              {awaiting.length > 0 && `${awaiting.length} ממתינות לאישור`}
+              {awaiting.length > 0 && totalPending > 0 && ' · '}
+              {totalPending > 0 && `${totalPending} הגשות לבדיקה`}
+            </span>
+          )}
+        </h1>
         <div className="flex gap-2">
           <Link href="/admin/submissions" className="rounded-lg bg-fd-primary px-3 py-1.5 text-sm font-medium text-fd-primary-foreground">
             בדיקת הגשות{totalPending > 0 ? ` (${totalPending})` : ''}
@@ -58,6 +67,12 @@ export default async function AdminPage() {
           <Link href="/admin/attendance" className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-fd-accent">
             נוכחות
           </Link>
+          <a href="/admin/export?type=grades" download className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-fd-accent">
+            ייצוא ציונים
+          </a>
+          <a href="/admin/export?type=attendance" download className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-fd-accent">
+            ייצוא נוכחות
+          </a>
           <Link href="/docs" className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-fd-accent">
             לחומרי הקורס
           </Link>
@@ -65,7 +80,7 @@ export default async function AdminPage() {
         </div>
       </div>
       {awaiting.length > 0 && (
-        <section className="mb-6 rounded-xl border border-amber-500/50 bg-amber-500/5 p-4">
+        <section role="status" className="mb-6 rounded-xl border border-amber-500/50 bg-amber-500/5 p-4">
           <h2 className="mb-3 font-semibold">ממתינות לאישור הרשמה ({awaiting.length})</h2>
           <ul className="space-y-2">
             {awaiting.map((r) => (
@@ -82,7 +97,7 @@ export default async function AdminPage() {
           <thead className="bg-fd-muted">
             <tr>
               {['תלמידה', 'הגשות', 'ממתינות לבדיקה', 'נוכחות', 'ציון מבחן', 'ציון משוער', 'גישה'].map((h) => (
-                <th key={h} className="p-3 text-start font-medium">
+                <th key={h} scope="col" className="p-3 text-start font-medium">
                   {h}
                 </th>
               ))}
@@ -101,6 +116,9 @@ export default async function AdminPage() {
                   <ExamGradeInput studentId={r.id} initial={r.exam} />
                 </td>
                 <td className="p-3 font-semibold">{r.final === null ? '—' : r.final.toFixed(1)}</td>
+                <td className="p-3">
+                  <ApproveButton studentId={r.id} approved={r.approved} />
+                </td>
               </tr>
             ))}
             {!rows.length && (

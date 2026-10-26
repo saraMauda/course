@@ -42,6 +42,7 @@ export function HomeworkSubmit({ lesson }: { lesson: string }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const [step, setStep] = useState('');
 
   useEffect(() => {
     if (!configured) return;
@@ -104,11 +105,14 @@ export function HomeworkSubmit({ lesson }: { lesson: string }) {
     if (screenshot && !screenshot.type.startsWith('image/')) return setError('צילום המסך חייב להיות תמונה');
     if (screenshot && screenshot.size > MAX_SCREENSHOT) return setError('צילום המסך גדול מדי (עד 5MB)');
     if (file && file.size > MAX_FILE) return setError('הקובץ גדול מדי (עד 10MB)');
+    if (submission && !window.confirm('כבר הוגשה עבודה. לעדכן אותה ולדרוס את הקיים?')) return;
 
     setBusy(true);
+    setDone(false);
     const supabase = createClient();
     const stamp = Date.now();
     const upload = async (f: File, name: string) => {
+      setStep(name === 'screenshot' ? 'מעלה צילום מסך...' : 'מעלה קובץ...');
       const p = `${userId}/${assignment.id}/${name}-${stamp}.${ext(f)}`;
       const { error } = await supabase.storage.from('submissions').upload(p, f, { contentType: f.type || undefined });
       if (error) throw error;
@@ -117,6 +121,7 @@ export function HomeworkSubmit({ lesson }: { lesson: string }) {
     try {
       const screenshot_path = screenshot ? await upload(screenshot, 'screenshot') : submission!.screenshot_path;
       const file_path = file ? await upload(file, 'file') : (submission?.file_path ?? null);
+      setStep('שומר הגשה...');
       const { error } = await supabase.from('submissions').upsert(
         {
           assignment_id: assignment.id,
@@ -125,7 +130,6 @@ export function HomeworkSubmit({ lesson }: { lesson: string }) {
           screenshot_path,
           file_path,
           notes: notes.trim() || null,
-          submitted_at: new Date().toISOString(),
         },
         { onConflict: 'assignment_id,student_id' },
       );
@@ -152,6 +156,7 @@ export function HomeworkSubmit({ lesson }: { lesson: string }) {
       setError(err instanceof Error ? err.message : 'ההגשה נכשלה, נסי שוב');
     } finally {
       setBusy(false);
+      setStep('');
     }
   }
 
@@ -194,9 +199,22 @@ export function HomeworkSubmit({ lesson }: { lesson: string }) {
             <span className="font-medium">הערות (לא חובה)</span>
             <textarea className={input} rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </label>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          {done && <p className="text-sm text-green-600">ההגשה נשמרה.</p>}
-          <button disabled={busy} className="rounded-lg bg-fd-primary px-5 py-2 font-medium text-fd-primary-foreground disabled:opacity-60">
+          {error && (
+            <p role="alert" className="text-sm text-red-600">
+              {error}
+            </p>
+          )}
+          {done && (
+            <p role="status" className="text-sm text-green-600">
+              ההגשה נשמרה.
+            </p>
+          )}
+          {busy && step && (
+            <p role="status" className="text-sm text-fd-muted-foreground">
+              {step}
+            </p>
+          )}
+          <button disabled={busy} aria-busy={busy} className="rounded-lg bg-fd-primary px-5 py-2 font-medium text-fd-primary-foreground disabled:opacity-60">
             {busy ? 'מעלה...' : submission ? 'עדכון הגשה' : 'הגשה'}
           </button>
         </form>

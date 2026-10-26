@@ -29,7 +29,7 @@ function routeResponse(request: NextRequest) {
   return NextResponse.next();
 }
 
-const PUBLIC_PATHS = new Set(['/', '/login', '/forgot-password', '/auth/callback']);
+const PUBLIC_PATHS = new Set(['/', '/login', '/forgot-password', '/auth/callback', '/robots.txt', '/sitemap.xml']);
 const SESSION_ONLY_PATHS = new Set(['/pending', '/reset-password']); // signed in, not necessarily approved yet
 const API_LIKE = ['/api', '/llms', '/og'];
 

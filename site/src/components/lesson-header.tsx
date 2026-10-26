@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ProgressToggle } from '@/components/progress-toggle';
 import { BookOpen, ClipboardList, Code2, FileText, Presentation } from 'lucide-react';
 
 const divisionNames: Record<number, string> = { 1: 'חטיבה 1', 2: 'חטיבה 2', 3: 'חטיבה 3' };
@@ -66,6 +67,7 @@ export function LessonHeader({ kind, lesson, division, schedule, demo, hasHomewo
             <FileText className="size-4" /> השיעור ב-GitHub
           </a>
         )}
+        <ProgressToggle lesson={lesson} />
         {lesson === '01' && (
           <a href="/slides/01.html" target="_blank" className={btn}>
             <Presentation className="size-4" /> שקפים

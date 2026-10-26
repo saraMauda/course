@@ -35,6 +35,7 @@ export function ProjectSubmit({ n }: { n: number }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const [step, setStep] = useState('');
 
   useEffect(() => {
     if (!configured || !project) return;
@@ -94,7 +95,10 @@ export function ProjectSubmit({ n }: { n: number }) {
       if (files[it.key] && files[it.key]!.size > MAX_FILE) return setError(`הקובץ גדול מדי (עד 10MB): ${it.label}`);
     }
 
+    if (submission && !window.confirm('כבר הוגשה עבודה. לעדכן אותה ולדרוס את הקיים?')) return;
+
     setBusy(true);
+    setDone(false);
     const supabase = createClient();
     const stamp = Date.now();
     try {
@@ -105,6 +109,7 @@ export function ProjectSubmit({ n }: { n: number }) {
           const f = files[it.key];
           let path = stored[it.key]?.path;
           if (f) {
+            setStep(`מעלה: ${it.label.slice(0, 40)}...`);
             path = `${userId}/${project.assignmentId}/${it.key}-${stamp}.${ext(f)}`;
             const { error } = await supabase.storage.from('submissions').upload(path, f, { contentType: f.type || undefined });
             if (error) throw error;
@@ -114,6 +119,7 @@ export function ProjectSubmit({ n }: { n: number }) {
           items[it.key] = { text };
         }
       }
+      setStep('שומר הגשה...');
       const { data, error } = await supabase
         .from('submissions')
         .upsert(
@@ -123,7 +129,6 @@ export function ProjectSubmit({ n }: { n: number }) {
             repo_url: items.repo?.text || null,
             items,
             notes: notes.trim() || null,
-            submitted_at: new Date().toISOString(),
           },
           { onConflict: 'assignment_id,student_id' },
         )
@@ -137,6 +142,7 @@ export function ProjectSubmit({ n }: { n: number }) {
       setError(err instanceof Error ? err.message : 'ההגשה נכשלה, נסי שוב');
     } finally {
       setBusy(false);
+      setStep('');
     }
   }
 
@@ -176,6 +182,7 @@ export function ProjectSubmit({ n }: { n: number }) {
                   <input
                     className={input}
                     type="file"
+                    aria-label={`קובץ עבור: ${it.label}`}
                     disabled={locked}
                     onChange={(e) => setFiles({ ...files, [it.key]: e.target.files?.[0] ?? null })}
                   />
@@ -187,6 +194,7 @@ export function ProjectSubmit({ n }: { n: number }) {
               {it.kind === 'file' ? (
                 <input
                   className={input}
+                  aria-label={`הערה או קישור עבור: ${it.label}`}
                   placeholder="הערה או קישור (לא חובה)"
                   disabled={locked}
                   value={texts[it.key] ?? ''}
@@ -195,6 +203,7 @@ export function ProjectSubmit({ n }: { n: number }) {
               ) : (
                 <textarea
                   className={input}
+                  aria-label={it.label}
                   rows={it.kind === 'link' ? 1 : 3}
                   dir={it.kind === 'link' ? 'ltr' : undefined}
                   placeholder={it.kind === 'link' ? 'https://...' : 'כתבי כאן'}
@@ -210,10 +219,23 @@ export function ProjectSubmit({ n }: { n: number }) {
           <span className="font-medium">הערות (לא חובה)</span>
           <textarea className={input} rows={3} disabled={locked} value={notes} onChange={(e) => setNotes(e.target.value)} />
         </label>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        {done && <p className="text-sm text-green-600">ההגשה נשמרה.</p>}
+        {error && (
+          <p role="alert" className="text-sm text-red-600">
+            {error}
+          </p>
+        )}
+        {done && (
+          <p role="status" className="text-sm text-green-600">
+            ההגשה נשמרה.
+          </p>
+        )}
+        {busy && step && (
+          <p role="status" className="text-sm text-fd-muted-foreground">
+            {step}
+          </p>
+        )}
         {!locked && (
-          <button disabled={busy} className="rounded-lg bg-fd-primary px-5 py-2 font-medium text-fd-primary-foreground disabled:opacity-60">
+          <button disabled={busy} aria-busy={busy} className="rounded-lg bg-fd-primary px-5 py-2 font-medium text-fd-primary-foreground disabled:opacity-60">
             {busy ? 'מעלה...' : submission ? 'עדכון הגשה' : 'הגשה'}
           </button>
         )}

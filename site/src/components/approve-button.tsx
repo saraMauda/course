@@ -10,6 +10,7 @@ export function ApproveButton({ studentId, approved }: { studentId: string; appr
   const [error, setError] = useState('');
 
   async function toggle() {
+    if (approved && !window.confirm('לבטל את הגישה של התלמידה לחומרי הקורס?')) return;
     setBusy(true);
     setError('');
     const { error } = await createClient().rpc('approve_student', { student: studentId, ok: !approved });

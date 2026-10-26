@@ -41,13 +41,21 @@ export default function LoginPage() {
       <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-xl border p-6">
         <h1 className="text-2xl font-bold">{mode === 'login' ? 'התחברות' : 'הרשמה'}</h1>
         {mode === 'signup' && (
-          <input className={input} placeholder="שם מלא" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+          <input className={input} aria-label="שם מלא" autoComplete="name" placeholder="שם מלא" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
         )}
-        <input className={input} type="email" dir="ltr" placeholder="אימייל" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <input className={input} type="password" dir="ltr" placeholder="סיסמה" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} required />
+        <input className={input} type="email" dir="ltr" aria-label="אימייל" autoComplete="email" placeholder="אימייל" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <input className={input} type="password" dir="ltr" aria-label="סיסמה" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} placeholder="סיסמה" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} required />
         {mode === 'signup' && <p className="text-xs text-fd-muted-foreground">סיסמה של 8 תווים לפחות. הגישה לחומרים נפתחת אחרי אישור המרצה.</p>}
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        {info && <p className="text-sm text-green-600">{info}</p>}
+        {error && (
+          <p role="alert" className="text-sm text-red-600">
+            {error}
+          </p>
+        )}
+        {info && (
+          <p role="status" className="text-sm text-green-600">
+            {info}
+          </p>
+        )}
         <button disabled={busy} className="w-full rounded-lg bg-fd-primary text-fd-primary-foreground py-2 font-medium disabled:opacity-60">
           {mode === 'login' ? 'כניסה' : 'יצירת חשבון'}
         </button>

@@ -8,7 +8,8 @@
     "dev": "npm run sync && next dev",
     "start": "next start",
     "types:check": "next typegen && tsc --noEmit",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -35,6 +36,7 @@
     "eslint-config-next": "16.4.2",
     "postcss": "^8.5.31",
     "tailwindcss": "^4.3.3",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^3.2.7"
   }
 }
