@@ -1,0 +1,299 @@
+---
+title: "דף הנחיה · פרויקט 1"
+description: "Customer Service Bot"
+kind: "project"
+---
+
+**מה נבנה:** צ'אטבוט שירות לקוחות שעונה מתוך מאגר שאלות-תשובות, **גם כשמנסחים את השאלה אחרת**, ושאומר "אין לי מידע" כשהשאלה לא קשורה.
+
+**איפה עובדים:** ב-**Google Colab** (דפדפן, בלי התקנות). אפשר גם מקומית, כי כבר אין ספריות שדורשות מהדר. כל "תא" למטה = תא קוד אחד ב-Colab. מריצים כל תא עם `Shift + Enter`, **לפי הסדר**, ולא עוברים לתא הבא עד שהפלט של הקודם נראה כמו שכתוב.
+
+---
+
+## איך זה עובד (לקרוא פעם אחת)
+
+```
+הכנה (פעם אחת):   שאלות ──► Embedding ──► וקטורים ──► מטריצה בקובץ faq.npy
+                  תשובות נשמרות בנפרד, לפי מספר שורה
+
+בכל שאלה:         שאלת משתמש ──► Embedding ──► 3 השאלות הדומות ביותר
+                  ──► התשובות שלהן ──► פרומפט ──► מודל שפה ──► תשובת JSON
+```
+
+שלושה כללים:
+1. **Embedding רק לשאלות.** התשובות נשארות כטקסט.
+2. **אותו מודל embedding** לשאלות ולשאילתות.
+3. **אם אין תשובה במאגר, הבוט אומר זאת.** הוא לא ממציא.
+
+---
+
+## שלב 0: הכנות (עושים בתחילת השיעור, או לפני)
+
+1. **מפתח Cohere:** נכנסים ל-dashboard.cohere.com ← נרשמים ← **API Keys** ← מעתיקים את ה-Trial key. *המפתח הוא סיסמה: לא משתפים ולא מעלים ל-GitHub.*
+2. פותחים colab.research.google.com ← **New notebook**.
+3. בסרגל הצד השמאלי: סמל המפתח (**Secrets**) ← **Add new secret**
+   - Name: `COHERE_API_KEY`
+   - Value: המפתח שהעתקתם
+   - מפעילים את **Notebook access**.
+
+---
+
+## שלב 1: התקנה וחיבור (תאים 1 ו-2)
+
+**תא 1:**
+
+```python
+!pip install -q cohere gradio numpy
+```
+
+**תא 2:**
+
+```python
+import json
+import numpy as np
+from google.colab import userdata
+import cohere
+
+co = cohere.ClientV2(userdata.get("COHERE_API_KEY"))
+
+EMBED_MODEL = "embed-multilingual-v3.0"   # תומך עברית
+CHAT_MODEL = "command-a-03-2025"
+print("מחובר")
+```
+
+✅ **אמור להופיע:** `מחובר`.
+❌ שגיאת `SecretNotFoundError` ← המפתח לא נוצר ב-Secrets או ש-Notebook access כבוי. ❌ שגיאת 401 ← המפתח הועתק לא נכון (רווח בסוף?).
+
+---
+
+## שלב 2: המאגר (Dataset) (תא 3)
+
+1. בוחרים **תחום ממוקד** (למשל: שירות לקוחות סלולר, בנק, חברת ביטוח).
+2. מבקשים ממודל שפה (ChatGPT / Claude) את הפרומפט הזה (מחליפים את התחום):
+
+```
+צור 40 זוגות שאלה-תשובה נפוצים בשירות לקוחות של חברת סלולר בישראל.
+החזר JSON תקין בלבד: מערך של אובייקטים עם השדות "question" ו-"answer".
+כל תשובה 1-3 משפטים. מגוון נושאים. בלי שאלות כפולות בניסוח אחר.
+```
+
+3. שומרים את התוצאה כקובץ `dataset.json` (קידוד **UTF-8**), ומעלים ל-Colab: סרגל צד ← **תיקייה** ← **Upload**.
+
+**מבנה הקובץ:**
+
+```json
+[
+  {"question": "איך מבטלים חבילה?", "answer": "דרך האפליקציה או בשיחה עם שירות הלקוחות."},
+  {"question": "...", "answer": "..."}
+]
+```
+
+**תא 3:**
+
+```python
+with open("dataset.json", encoding="utf-8") as f:
+    data = json.load(f)
+questions = [item["question"] for item in data]
+print(len(data), "זוגות. דוגמה:", data[0])
+```
+
+✅ **אמור להופיע:** מספר **30 ומעלה** ודוגמה עם `question` ו-`answer`.
+❌ `JSONDecodeError` ← ה-LLM עטף את הפלט ב-```` ```json ````, או שיש פסיק אחרי האיבר האחרון. מוחקים ומתקנים.
+
+---
+
+## שלב 3: Embeddings (תא 4)
+
+כאן כל שאלה במאגר הופכת לרשימה של 1024 מספרים שמייצגת את המשמעות שלה. שאלות עם משמעות דומה מקבלות מספרים קרובים.
+
+```python
+resp = co.embed(
+    texts=questions,
+    model=EMBED_MODEL,
+    input_type="search_document",   # לשאלות שבמאגר
+    embedding_types=["float"],
+)
+vectors = resp.embeddings.float_
+print(len(vectors), "וקטורים, ממד", len(vectors[0]))
+```
+
+✅ **אמור להופיע:** מספר הוקטורים כמספר הזוגות, וממד `1024`.
+❌ יותר מ-96 שאלות ← מחלקים לקבוצות של 90 ומאחדים את הרשימות.
+❌ `AttributeError ... float_` ← מדפיסים `resp.embeddings` ומתאימים לשם השדה בגרסה שלכם.
+
+---
+
+## שלב 4: שמירת הווקטורים (תא 5)
+
+במקום ספריית אינדקס, נשמור את הווקטורים כמטריצה ונחשב דמיון בעצמנו. על 36–100 שאלות זה מיידי.
+
+```python
+matrix = np.array(vectors, dtype=np.float32)
+matrix /= np.linalg.norm(matrix, axis=1, keepdims=True)   # נרמול: אורך 1 לכל וקטור
+np.save("faq.npy", matrix)
+print("נשמר faq.npy, צורה:", matrix.shape)
+```
+
+✅ **אמור להופיע:** `נשמר faq.npy, צורה: (36, 1024)` (מספר השורות = מספר הזוגות).
+**שימו לב:** מספר השורה `i` במטריצה הוא גם מספר הזוג ב-`data`.
+**למה נרמול?** כשכל וקטור באורך 1, מכפלה פנימית שווה לדמיון קוסינוס (1 = זהה, 0 = לא קשור).
+
+---
+
+## שלב 5: שליפה (תא 6)
+
+```python
+def retrieve(query, k=3):
+    r = co.embed(
+        texts=[query],
+        model=EMBED_MODEL,
+        input_type="search_query",      # לשאילתה, שונה מ-search_document
+        embedding_types=["float"],
+    )
+    q = np.array(r.embeddings.float_[0], dtype=np.float32)
+    q /= np.linalg.norm(q)
+    sims = matrix @ q                    # דמיון קוסינוס לכל השאלות במאגר
+    top = np.argsort(-sims)[:k]          # k הגבוהים ביותר
+    return [
+        {"question": data[i]["question"],
+         "answer": data[i]["answer"],
+         "score": round(float(sims[i]), 3)}   # גבוה = דומה
+        for i in top
+    ]
+
+for q in ["איבדתי את הפלאפון שלי", "כמה עולה לגלוש בחו\"ל", "מה מזג האוויר מחר?"]:
+    print("\n>>", q)
+    for r in retrieve(q):
+        print(f"  {r['score']}  {r['question']}")
+```
+
+✅ **אמור לראות:**
+- "איבדתי את הפלאפון" ← בראש שאלה על אובדן או גניבה, **למרות שאין מילה משותפת**.
+- "מה מזג האוויר" ← הבוט עדיין מחזיר 3 תוצאות, אבל **הציונים נמוכים**.
+
+**כיול הסף:** רושמים את הציון הגבוה ביותר (הראשון ברשימה) של 4 שאלות בתחום ושל 3 שאלות מחוץ לתחום. הסף הוא מספר **בין** שתי הקבוצות: מעל כל הציונים של שאלות מחוץ לתחום, ומתחת לציונים של שאלות בתחום. מכניסים אותו בתא הבא ב-`SCORE_THRESHOLD`.
+
+---
+
+## שלב 6: פרומפט, Guardrails ופלט JSON (תא 7)
+
+כאן הבוט מקבל את התשובות שנשלפו ומנסח תשובה, אבל **רק** מתוכן. אם אין התאמה מספיק טובה, הוא לא נשאל בכלל.
+
+```python
+SCORE_THRESHOLD = 0.45          # להחליף לפי הכיול שעשיתם
+NO_ANSWER = "אני מצטער, אך המסמכים שסופקו אינם מכילים מספיק מידע כדי לענות על שאלה זו."
+
+def build_prompt(query, results):
+    context = "\n---\n".join(
+        f"שאלה דומה: {r['question']}\nתשובה: {r['answer']}" for r in results
+    )
+    return f"""את/ה עוזר/ת שירות לקוחות. ענה על שאלת המשתמש בהתבסס *אך ורק* על ההקשר.
+
+הקשר:
+---
+{context}
+---
+
+שאלה:
+{query}
+
+הוראות:
+- ענה רק לפי ההקשר. אל תשתמש בידע קודם.
+- אם ההקשר אינו מספיק, החזר בשדה answer בדיוק: "{NO_ANSWER}" ובשדה out_of_scope החזר true.
+- היה תמציתי ואל תחזור על ההקשר מילה במילה.
+- החזר JSON תקין בלבד במבנה:
+{{"answer": "...", "out_of_scope": false, "confidence": "high|medium|low"}}"""
+
+def answer(query):
+    results = retrieve(query)
+    if results[0]["score"] < SCORE_THRESHOLD:       # הגנה ראשונה: בלי לקרוא למודל
+        return {"answer": NO_ANSWER, "out_of_scope": True,
+                "confidence": "low", "sources": results}
+    resp = co.chat(
+        model=CHAT_MODEL,
+        messages=[{"role": "user", "content": build_prompt(query, results)}],
+        response_format={"type": "json_object"},
+        temperature=0,
+    )
+    out = json.loads(resp.message.content[0].text)
+    out["sources"] = results
+    return out
+
+print(json.dumps(answer("באיזו שעה אתם פתוחים?"), ensure_ascii=False, indent=2))
+print(json.dumps(answer("מי ניצח במונדיאל?"), ensure_ascii=False, indent=2))
+```
+
+✅ **אמור לראות:** לשאלה הראשונה תשובה אמיתית, `out_of_scope: false`, ומקורות עם ציונים. לשניה: `out_of_scope: true` והודעת "אין מידע".
+**שתי שכבות הגנה:** (1) סף ציון לפני המודל, (2) הוראה בפרומפט. לא סומכים רק על הפרומפט.
+❌ `NotFoundError` על המודל ← בודקים ב-dashboard שם מודל זמין בחשבון שלכם.
+
+---
+
+## שלב 7: ממשק Gradio (תא 8)
+
+```python
+import gradio as gr
+
+def ui(query):
+    r = answer(query)
+    sources = "\n".join(f"{s['score']}  {s['question']}" for s in r["sources"])
+    return r["answer"], r["out_of_scope"], sources, json.dumps(r, ensure_ascii=False, indent=2)
+
+demo = gr.Interface(
+    fn=ui,
+    inputs=gr.Textbox(label="שאלה"),
+    outputs=[
+        gr.Textbox(label="תשובה"),
+        gr.Checkbox(label="מחוץ לתחום?"),
+        gr.Textbox(label="מקורות + ציון דמיון"),
+        gr.Code(label="JSON מובנה", language="json"),
+    ],
+    title="Service Bot",
+)
+demo.launch(share=True)
+```
+
+✅ **אמור לראות:** קישור `https://....gradio.live`. פותחים ובודקים שאלות.
+
+---
+
+## שלב 8: בדיקות והגשה
+
+**מקרי בדיקה חובה (שומרים בטבלה):** 5 שאלות שנפגעות טוב · 2 בניסוח שונה לגמרי ממה שבמאגר · 1 מחוץ לתחום.
+
+העתיקו את הטבלה ומלאו **8 שורות**: שורות 1–5 פגיעה טובה, שורות 6–7 ניסוח חלופי, שורה 8 מחוץ לתחום.
+
+| # | סוג | שאלה | ציון עליון | תשובת הבוט | עבר? |
+|---|------|------|------------|-------------|------|
+| 1 | פגיעה טובה | | | | |
+| 2 | פגיעה טובה | | | | |
+| 3 | פגיעה טובה | | | | |
+| 4 | פגיעה טובה | | | | |
+| 5 | פגיעה טובה | | | | |
+| 6 | ניסוח חלופי | | | | |
+| 7 | ניסוח חלופי | | | | |
+| 8 | מחוץ לתחום | | | | |
+
+**מה להגיש:**
+- [ ] ה-notebook (`File ← Download .ipynb`)
+- [ ] `dataset.json` ו-`faq.npy`
+- [ ] README קצר: התחום שבחרתם, איך מריצים (באיזה סדר התאים), ואיפה שמים את המפתח (Colab Secrets, לא בתוך הקוד)
+- [ ] טבלת 8 הבדיקות
+- [ ] דוגמת פלט JSON אחת
+- [ ] **בלי המפתח בתוך הקבצים**
+
+**בונוס:** העלאת ה-dataset ל-Hugging Face · שרשרת סיווג כוונה לפני התשובה (למשל: תקלה / חיוב / ביטול) · בדיקה של סף שונה ותיעוד ההשפעה.
+
+---
+
+## אם נתקעתם: טבלת עזרה
+
+| תסמין | סיבה | פתרון |
+|--------|------|--------|
+| `SecretNotFoundError` | אין Secret בשם הזה | בודקים את השם `COHERE_API_KEY` ואת Notebook access |
+| 401 | מפתח שגוי | מעתיקים מחדש, בלי רווחים |
+| 429 | יותר מדי קריאות | ממתינים דקה, לא מריצים שוב ושוב |
+| `shapes not aligned` | מודל embedding שונה בבנייה ובשאילתה | אותו `EMBED_MODEL` בכל מקום, ולבנות את המטריצה מחדש |
+| הציונים לא הגיוניים | `input_type` שגוי | מאגר: `search_document`. שאילתה: `search_query` |
+| `JSONDecodeError` בתשובת המודל | המודל עטף ב-markdown | לוודא שיש `response_format` |
+| שינית את ה-dataset | המטריצה ישנה | מריצים שוב את תאים 3, 4 ו-5 |

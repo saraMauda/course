@@ -227,6 +227,12 @@
       "isGuide": false
     },
     {
+      "slug": "/docs/projects/project-01-guide",
+      "title": "דף הנחיה · פרויקט 1",
+      "description": "Customer Service Bot",
+      "isGuide": true
+    },
+    {
       "slug": "/docs/projects/project-02",
       "title": "פרויקט 2",
       "description": "Autonomous Research Agent with MCP & Tools",

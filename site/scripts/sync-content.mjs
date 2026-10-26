@@ -195,6 +195,17 @@ for (const f of fs.readdirSync(projectsDir).filter((f) => f.endsWith('.md'))) {
   write(path.join(docsOut, 'projects', `${slug}.md`), { title, description, kind: 'project' }, body);
   courseData.projects.push({ slug: `/docs/projects/${slug}`, title, description, isGuide });
 }
+// project 1's student guide lives next to the bot code in service-bot/
+const bot1Guide = path.join(courseRoot, 'service-bot', 'דף-הנחיה-לסטודנטים.md');
+if (fs.existsSync(bot1Guide)) {
+  const { body } = split(fs.readFileSync(bot1Guide, 'utf8'));
+  write(
+    path.join(docsOut, 'projects', 'project-01-guide.md'),
+    { title: 'דף הנחיה · פרויקט 1', description: 'Customer Service Bot', kind: 'project' },
+    body,
+  );
+  courseData.projects.push({ slug: '/docs/projects/project-01-guide', title: 'דף הנחיה · פרויקט 1', description: 'Customer Service Bot', isGuide: true });
+}
 courseData.projects.sort((a, b) => a.slug.localeCompare(b.slug));
 fs.writeFileSync(
   path.join(docsOut, 'projects', 'meta.json'),
