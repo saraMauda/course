@@ -19,7 +19,8 @@ drop policy if exists "unmark own progress" on public.lesson_progress;
 create policy "unmark own progress" on public.lesson_progress for delete
   using (student_id = auth.uid());
 
--- 2. submitted_at is set by the server --------------------------------------------------------------
+-- 2. submitted_at is set by the server ------------------------------------------------
+--------------
 -- Otherwise a student could send a back-dated timestamp and dodge the "late" flag.
 create or replace function public.stamp_submission() returns trigger
 language plpgsql security definer set search_path = '' as $$
