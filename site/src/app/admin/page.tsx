@@ -67,6 +67,9 @@ export default async function AdminPage() {
           <Link href="/admin/attendance" className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-fd-accent">
             נוכחות
           </Link>
+          <Link href="/admin/lessons" className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-fd-accent">
+            תאריכים ותזכורות
+          </Link>
           <a href="/admin/export?type=grades" download className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-fd-accent">
             ייצוא ציונים
           </a>

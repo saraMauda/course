@@ -41,6 +41,51 @@ export function buildSubmissionMail(opts: {
   return { subject, text, html };
 }
 
+function layout(hello: string, lines: string[]) {
+  const text = [hello, '', ...lines].join('\n');
+  const html =
+    `<div dir="rtl" style="font-family:Arial,sans-serif;line-height:1.6">` +
+    `<p>${escapeHtml(hello)}</p>` +
+    lines.map((l) => (l ? `<p style="margin:0 0 8px;white-space:pre-wrap">${escapeHtml(l)}</p>` : '<br>')).join('') +
+    `</div>`;
+  return { text, html };
+}
+
+function hebrewDate(day: string) {
+  return new Date(`${day}T12:00:00Z`).toLocaleDateString('he-IL', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'Asia/Jerusalem',
+  });
+}
+
+/** Automatic reminders sent by the daily job. */
+export function buildReminderMail(opts: {
+  kind: 'homework_missing' | 'lesson_soon';
+  studentName: string;
+  lessonTitle: string;
+  lessonDate: string; // YYYY-MM-DD
+  assignmentTitle?: string;
+  link?: string;
+}) {
+  const hello = opts.studentName.trim() ? `היי ${opts.studentName.trim()},` : 'שלום,';
+  const when = hebrewDate(opts.lessonDate);
+  const subject =
+    opts.kind === 'homework_missing'
+      ? `תזכורת: עדיין לא הוגשו ${opts.assignmentTitle}`
+      : `תזכורת: מחר שיעור – ${opts.lessonTitle}`;
+  const lines =
+    opts.kind === 'homework_missing'
+      ? [
+          `עוד לא הגשת את "${opts.assignmentTitle}", והשיעור הבא ("${opts.lessonTitle}") ב${when}.`,
+          'כדאי להגיש לפני השיעור.',
+        ]
+      : [`מחר, ${when}, מתקיים השיעור "${opts.lessonTitle}".`];
+  if (opts.link) lines.push('', opts.link);
+  return { subject, ...layout(hello, lines) };
+}
+
 let transport: Transporter | undefined;
 
 export async function sendMail(to: string, mail: { subject: string; text: string; html: string }) {
