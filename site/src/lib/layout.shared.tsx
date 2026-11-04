@@ -10,6 +10,7 @@ export function baseOptions(): BaseLayoutProps {
     },
     links: [
       { text: 'חומרי הקורס', url: '/docs' },
+      { text: 'סביבת הרצה', url: '/playground' },
       { text: 'האזור האישי', url: '/dashboard' },
     ],
     githubUrl: `https://github.com/${gitConfig.user}/${gitConfig.repo}`,
