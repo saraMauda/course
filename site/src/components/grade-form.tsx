@@ -21,13 +21,27 @@ export function GradeForm({
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  async function run(update: Record<string, unknown>, okText: string) {
+  const [notify, setNotify] = useState(true);
+
+  async function run(update: Record<string, unknown>, okText: string, event: 'returned' | 'graded') {
     setBusy(true);
     setMsg(null);
     const { error } = await createClient().from('submissions').update(update).eq('id', submissionId);
+    if (error) {
+      setBusy(false);
+      return setMsg({ ok: false, text: 'השמירה נכשלה' });
+    }
+    let text = okText;
+    if (notify) {
+      const res = await fetch('/api/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ submissionId, event }),
+      }).catch(() => null);
+      text += res?.ok ? ' · נשלח מייל' : ' · שליחת המייל נכשלה';
+    }
     setBusy(false);
-    if (error) return setMsg({ ok: false, text: 'השמירה נכשלה' });
-    setMsg({ ok: true, text: okText });
+    setMsg({ ok: true, text });
     router.refresh();
   }
 
@@ -35,6 +49,7 @@ export function GradeForm({
     return run(
       { grade: value, feedback: fb.trim() || null, graded_at: new Date().toISOString() },
       'נשמר',
+      'graded',
     );
   }
 
@@ -72,7 +87,7 @@ export function GradeForm({
           <button
             type="button"
             disabled={busy}
-            onClick={() => run({ grade: null, graded_at: null, feedback: fb.trim() || null }, 'הוחזר לתיקון')}
+            onClick={() => run({ grade: null, graded_at: null, feedback: fb.trim() || null }, 'הוחזר לתיקון', 'returned')}
             className="rounded-lg border border-amber-500 px-3 py-1.5 text-sm text-amber-700 hover:bg-amber-500/10 disabled:opacity-60"
           >
             החזרה לתיקון
@@ -87,6 +102,10 @@ export function GradeForm({
         value={fb}
         onChange={(e) => setFb(e.target.value)}
       />
+      <label className="flex cursor-pointer items-center gap-2 text-sm text-fd-muted-foreground">
+        <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} />
+        שליחת מייל לתלמידה
+      </label>
     </form>
   );
 }

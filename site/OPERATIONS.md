@@ -5,6 +5,7 @@ Run in the SQL editor, once each (all are safe to re-run):
 1. `supabase/schema.sql` (+ `seed.sql`)
 2. `supabase/002-add-exam.sql`, `003-security.sql`, `004-project-items.sql`
 3. `supabase/005-progress-and-hardening.sql` (lesson progress, server-side `submitted_at`)
+   `supabase/006-student-email.sql` (lets the notification API look up a student's email; teacher-only). Email also needs the `SMTP_*` variables from `.env.example`.
 4. Authentication → Hooks → Custom Access Token → `public.custom_access_token_hook`
 
 ## Backups and restore
