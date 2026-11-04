@@ -1,4 +1,5 @@
 import nodemailer, { type Transporter } from 'nodemailer';
+import { hebrewDate } from './dates';
 
 export const smtpConfigured = Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
 
@@ -51,13 +52,20 @@ function layout(hello: string, lines: string[]) {
   return { text, html };
 }
 
-function hebrewDate(day: string) {
-  return new Date(`${day}T12:00:00Z`).toLocaleDateString('he-IL', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    timeZone: 'Asia/Jerusalem',
-  });
+/** A message the teacher wrote herself (already filled per student). URLs become links. */
+export function buildCustomMail(subject: string, body: string) {
+  const html =
+    `<div dir="rtl" style="font-family:Arial,sans-serif;line-height:1.6">` +
+    body
+      .split('\n')
+      .map((l) =>
+        l
+          ? `<p style="margin:0 0 8px;white-space:pre-wrap">${escapeHtml(l).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>')}</p>`
+          : '<br>',
+      )
+      .join('') +
+    `</div>`;
+  return { subject, text: body, html };
 }
 
 /** Automatic reminders sent by the daily job. */

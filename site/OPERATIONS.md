@@ -7,6 +7,7 @@ Run in the SQL editor, once each (all are safe to re-run):
 3. `supabase/005-progress-and-hardening.sql` (lesson progress, server-side `submitted_at`)
    `supabase/006-student-email.sql` (lets the notification API look up a student's email; teacher-only). Email also needs the `SMTP_*` variables from `.env.example`.
    `supabase/007-reminders.sql` (log of sent reminders). Daily reminders also need `SUPABASE_SERVICE_ROLE_KEY` and `CRON_SECRET` in Vercel; lesson dates are entered at `/admin/lessons`. Preview without sending: `curl -H "Authorization: Bearer $CRON_SECRET" "https://<site>/api/cron/reminders?dry=1"`.
+   `supabase/008-teacher-tools.sql` (custom email templates, log of emails sent from `/admin/email`, bulk email lookup for teachers). Needs the same `SMTP_*` variables; no service key is required. Without it the email page still opens, but templates cannot be saved.
 4. Authentication → Hooks → Custom Access Token → `public.custom_access_token_hook`
 
 ## Backups and restore

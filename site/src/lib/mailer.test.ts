@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { buildSubmissionMail, escapeHtml } from './mailer';
+import { buildCustomMail, buildSubmissionMail, escapeHtml } from './mailer';
+
+describe('buildCustomMail', () => {
+  it('keeps the text as written, links URLs and escapes html', () => {
+    const m = buildCustomMail('נושא', 'היי <b>\nhttps://a.co/x?y=1&z=2');
+    expect(m.text).toBe('היי <b>\nhttps://a.co/x?y=1&z=2');
+    expect(m.html).toContain('&lt;b&gt;');
+    expect(m.html).toContain('<a href="https://a.co/x?y=1&amp;z=2">');
+  });
+});
 
 describe('buildSubmissionMail', () => {
   it('returned: mentions the assignment and includes feedback', () => {

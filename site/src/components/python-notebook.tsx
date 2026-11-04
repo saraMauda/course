@@ -1,7 +1,18 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { splitPipLines, toIpynb, type NotebookCell } from '@/lib/py-notebook';
+import { createClient } from '@/lib/supabase/client';
+
+/** Where "submit to teacher" saves the notebook: one file item of a project's delivery checklist. */
+export interface SubmitTarget {
+  assignmentId: number;
+  itemKey: string;
+  projectHref: string;
+}
+
+const configured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
 interface CellState {
   code: string;
@@ -48,7 +59,17 @@ function initialCells(cells: NotebookCell[], storageKey: string): Record<string,
 const btn = 'rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-fd-accent disabled:opacity-50';
 const primary = 'rounded-lg bg-fd-primary px-3 py-1.5 text-sm font-medium text-fd-primary-foreground disabled:opacity-50';
 
-export function PythonNotebook({ cells, storageKey }: { cells: NotebookCell[]; storageKey: string }) {
+export function PythonNotebook({
+  cells,
+  storageKey,
+  submitTo,
+}: {
+  cells: NotebookCell[];
+  storageKey: string;
+  submitTo?: SubmitTarget;
+}) {
+  const [submitMsg, setSubmitMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [state, setState] = useState<Record<string, CellState>>(() => initialCells(cells, storageKey));
   const [status, setStatus] = useState<Status>('loading');
   const [statusText, setStatusText] = useState('');
@@ -169,8 +190,49 @@ export function PythonNotebook({ cells, storageKey }: { cells: NotebookCell[]; s
     store.set('local', storageKey, JSON.stringify(saved));
   }
 
+  const notebookJson = () =>
+    toIpynb(cells.map((c) => ({ title: c.title, code: state[c.id].code, output: state[c.id].output, error: state[c.id].error })));
+
+  async function submitToTeacher() {
+    if (!submitTo) return;
+    setSubmitMsg(null);
+    setSubmitting(true);
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error('צריך להתחבר כדי להגיש');
+      const { data: existing } = await supabase
+        .from('submissions')
+        .select('id, items, graded_at')
+        .eq('assignment_id', submitTo.assignmentId)
+        .eq('student_id', user.id)
+        .maybeSingle();
+      if (existing?.graded_at) throw new Error('ההגשה כבר נבדקה ולכן אי אפשר לשנות אותה');
+      if (existing && !window.confirm('כבר הוגשה עבודה. להחליף את ה-notebook שהוגש?')) return;
+
+      const path = `${user.id}/${submitTo.assignmentId}/${submitTo.itemKey}-${Date.now()}.ipynb`;
+      const file = new File([notebookJson()], 'service-bot.ipynb', { type: 'application/x-ipynb+json' });
+      const up = await supabase.storage.from('submissions').upload(path, file, { contentType: 'application/x-ipynb+json' });
+      if (up.error) throw up.error;
+
+      const prev = (existing?.items ?? {}) as Record<string, { text?: string; path?: string }>;
+      const items = { ...prev, [submitTo.itemKey]: { ...prev[submitTo.itemKey], path } };
+      const { error } = existing
+        ? await supabase.from('submissions').update({ items }).eq('id', existing.id)
+        : await supabase.from('submissions').insert({ assignment_id: submitTo.assignmentId, student_id: user.id, items });
+      if (error) throw error;
+      setSubmitMsg({ ok: true, text: 'ה-notebook הוגש למרצה, כולל הפלט של התאים.' });
+    } catch (err) {
+      setSubmitMsg({ ok: false, text: err instanceof Error ? err.message : 'ההגשה נכשלה, נסי שוב' });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   function downloadNotebook() {
-    const json = toIpynb(cells.map((c) => ({ title: c.title, code: state[c.id].code })));
+    const json = notebookJson();
     const url = URL.createObjectURL(new Blob([json], { type: 'application/x-ipynb+json' }));
     const a = document.createElement('a');
     a.href = url;
@@ -219,11 +281,32 @@ export function PythonNotebook({ cells, storageKey }: { cells: NotebookCell[]; s
             <button className={btn} onClick={downloadNotebook}>
               הורדת notebook
             </button>
+            {submitTo && configured && (
+              <button className={primary} disabled={submitting} onClick={submitToTeacher}>
+                {submitting ? 'מגישה...' : 'הגשה למרצה'}
+              </button>
+            )}
             <button className={btn} onClick={reset}>
               איפוס
             </button>
           </div>
         </div>
+
+        {submitMsg && (
+          <p role="status" className={`text-sm ${submitMsg.ok ? 'text-green-600' : 'text-red-600'}`}>
+            {submitMsg.text}
+            {submitMsg.ok && submitTo && (
+              <>
+                {' '}
+                להשלמת שאר פריטי ההגשה (מאגר, בדיקות ועוד):{' '}
+                <Link href={submitTo.projectHref} className="underline">
+                  עמוד הפרויקט
+                </Link>
+                .
+              </>
+            )}
+          </p>
+        )}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block space-y-1">

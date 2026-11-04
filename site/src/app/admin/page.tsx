@@ -1,22 +1,18 @@
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
-import { createClient, supabaseConfigured } from '@/lib/supabase/server';
+import { requireTeacher } from '@/lib/admin';
 import { ApproveButton } from '@/components/approve-button';
-import { SignOutButton } from '@/components/sign-out-button';
-import { ExamGradeInput } from '@/components/exam-grade-input';
+import { StudentsTable, type StudentRow } from '@/components/students-table';
 import { finalGrade, attendancePercent, defaultWeights, type Weights } from '@/lib/grades';
+import { hebrewDate } from '@/lib/dates';
+import { nextLesson } from '@/lib/email-templates';
+import { daysBetween, todayInIsrael } from '@/lib/reminders';
+
+export const metadata = { title: 'ניהול הקורס' };
 
 export default async function AdminPage() {
-  if (!supabaseConfigured) redirect('/dashboard');
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
-  const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (me?.role !== 'teacher') redirect('/dashboard');
+  const { supabase } = await requireTeacher();
 
-  const [{ data: students }, { data: assignments }, { data: subs }, { data: attendance }, { data: w }, { data: exams }] =
+  const [{ data: students }, { data: assignments }, { data: subs }, { data: attendance }, { data: w }, { data: exams }, { data: lessons }] =
     await Promise.all([
       supabase.from('profiles').select('id, full_name, approved').eq('role', 'student').order('full_name'),
       supabase.from('assignments').select('id, kind'),
@@ -24,18 +20,21 @@ export default async function AdminPage() {
       supabase.from('attendance').select('student_id, status'),
       supabase.from('grade_weights').select('category, weight'),
       supabase.from('exam_grades').select('student_id, grade'),
+      supabase.from('lessons').select('id, title, held_on'),
     ]);
   const weights = {
     ...defaultWeights,
     ...Object.fromEntries((w ?? []).map((r) => [r.category, Number(r.weight)])),
   } as Weights;
 
-  const rows = (students ?? []).map((s) => {
+  const rows: StudentRow[] = (students ?? []).map((s) => {
     const mySubs = (subs ?? []).filter((x) => x.student_id === s.id);
     const myAtt = (attendance ?? []).filter((x) => x.student_id === s.id);
     const exam = (exams ?? []).find((x) => x.student_id === s.id)?.grade;
     return {
-      ...s,
+      id: s.id,
+      full_name: s.full_name,
+      approved: s.approved,
       exam: exam === undefined ? null : Number(exam),
       submitted: mySubs.length,
       pending: mySubs.filter((x) => x.grade === null).length,
@@ -45,95 +44,65 @@ export default async function AdminPage() {
   });
 
   const awaiting = rows.filter((r) => !r.approved);
+  const active = rows.length - awaiting.length;
   const totalPending = rows.reduce((n, r) => n + r.pending, 0);
+  const today = todayInIsrael();
+  const next = nextLesson(lessons ?? [], today);
+  const inDays = next?.held_on ? daysBetween(today, next.held_on) : null;
 
   return (
-    <main className="p-4 sm:p-6 max-w-4xl mx-auto">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold">
-          ניהול הקורס
-          {awaiting.length + totalPending > 0 && (
-            <span className="ms-3 text-sm font-medium text-amber-700 dark:text-amber-400">
-              {awaiting.length > 0 && `${awaiting.length} ממתינות לאישור`}
-              {awaiting.length > 0 && totalPending > 0 && ' · '}
-              {totalPending > 0 && `${totalPending} הגשות לבדיקה`}
-            </span>
-          )}
-        </h1>
-        <div className="flex gap-2">
-          <Link href="/admin/submissions" className="rounded-lg bg-fd-primary px-3 py-1.5 text-sm font-medium text-fd-primary-foreground">
-            בדיקת הגשות{totalPending > 0 ? ` (${totalPending})` : ''}
-          </Link>
-          <Link href="/admin/attendance" className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-fd-accent">
-            נוכחות
-          </Link>
-          <Link href="/admin/lessons" className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-fd-accent">
-            תאריכים ותזכורות
-          </Link>
-          <a href="/admin/export?type=grades" download className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-fd-accent">
-            ייצוא ציונים
-          </a>
-          <a href="/admin/export?type=attendance" download className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-fd-accent">
-            ייצוא נוכחות
-          </a>
-          <Link href="/docs" className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-fd-accent">
-            לחומרי הקורס
-          </Link>
-          <SignOutButton />
-        </div>
-      </div>
+    <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
+      <h1 className="text-2xl font-bold">ניהול הקורס</h1>
+
+      <section aria-label="סקירה" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat label="תלמידות פעילות" value={String(active)} />
+        <Stat label="ממתינות לאישור" value={String(awaiting.length)} tone={awaiting.length ? 'warn' : undefined} />
+        <Stat
+          label="הגשות לבדיקה"
+          value={String(totalPending)}
+          tone={totalPending ? 'warn' : undefined}
+          href={totalPending ? '/admin/submissions?show=pending' : undefined}
+        />
+        <Stat
+          label="השיעור הבא"
+          value={next ? `שיעור ${next.id}` : 'לא נקבע'}
+          sub={
+            next?.held_on
+              ? `${hebrewDate(next.held_on)}${inDays === 0 ? ' · היום' : inDays === 1 ? ' · מחר' : ` · בעוד ${inDays} ימים`}`
+              : 'אפשר להזין תאריכים בלשונית "שיעורים ותאריכים"'
+          }
+          href="/admin/lessons"
+        />
+      </section>
+
       {awaiting.length > 0 && (
-        <section role="status" className="mb-6 rounded-xl border border-amber-500/50 bg-amber-500/5 p-4">
+        <section role="status" className="rounded-xl border border-amber-500/50 bg-amber-500/5 p-4">
           <h2 className="mb-3 font-semibold">ממתינות לאישור הרשמה ({awaiting.length})</h2>
           <ul className="space-y-2">
             {awaiting.map((r) => (
               <li key={r.id} className="flex items-center justify-between gap-3">
-                <span>{r.full_name || 'ללא שם'}</span>
+                <Link href={`/admin/students/${r.id}`} className="hover:underline">
+                  {r.full_name || 'ללא שם'}
+                </Link>
                 <ApproveButton studentId={r.id} approved={false} />
               </li>
             ))}
           </ul>
         </section>
       )}
-      <div className="overflow-x-auto rounded-xl border">
-        <table className="w-full text-start">
-          <thead className="bg-fd-muted">
-            <tr>
-              {['תלמידה', 'הגשות', 'ממתינות לבדיקה', 'נוכחות', 'ציון מבחן', 'ציון משוער', 'גישה'].map((h) => (
-                <th key={h} scope="col" className="p-3 text-start font-medium">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {rows.map((r) => (
-              <tr key={r.id}>
-                <td className="p-3">{r.full_name || '—'}</td>
-                <td className="p-3">
-                  {r.submitted}/{assignments?.length ?? 0}
-                </td>
-                <td className="p-3">{r.pending}</td>
-                <td className="p-3">{r.att === null ? '—' : `${r.att.toFixed(0)}%`}</td>
-                <td className="p-3">
-                  <ExamGradeInput studentId={r.id} initial={r.exam} />
-                </td>
-                <td className="p-3 font-semibold">{r.final === null ? '—' : r.final.toFixed(1)}</td>
-                <td className="p-3">
-                  <ApproveButton studentId={r.id} approved={r.approved} />
-                </td>
-              </tr>
-            ))}
-            {!rows.length && (
-              <tr>
-                <td colSpan={7} className="p-3 text-fd-muted-foreground">
-                  אין עדיין תלמידות רשומות.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+
+      <StudentsTable rows={rows} totalAssignments={assignments?.length ?? 0} />
     </main>
   );
+}
+
+function Stat({ label, value, sub, tone, href }: { label: string; value: string; sub?: string; tone?: 'warn'; href?: string }) {
+  const body = (
+    <div className={`h-full rounded-xl border p-4 ${tone === 'warn' ? 'border-amber-500/50 bg-amber-500/5' : ''} ${href ? 'hover:bg-fd-accent' : ''}`}>
+      <div className="text-sm text-fd-muted-foreground">{label}</div>
+      <div className="text-2xl font-bold">{value}</div>
+      {sub && <div className="mt-0.5 text-xs text-fd-muted-foreground">{sub}</div>}
+    </div>
+  );
+  return href ? <Link href={href}>{body}</Link> : body;
 }

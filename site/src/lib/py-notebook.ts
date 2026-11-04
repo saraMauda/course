@@ -43,8 +43,13 @@ export interface NotebookCell {
 }
 
 /** Serialises cells as a Jupyter notebook (nbformat 4), so the student can submit a normal .ipynb. */
-export function toIpynb(cells: { title: string; code: string }[]): string {
+export function toIpynb(cells: { title: string; code: string; output?: string; error?: string }[]): string {
   const lines = (s: string) => s.split('\n').map((l, i, a) => (i < a.length - 1 ? l + '\n' : l));
+  // what the cell printed (and its error, if any) travels with the notebook so the teacher sees the results
+  const outputs = (c: { output?: string; error?: string }) => [
+    ...(c.output ? [{ output_type: 'stream', name: 'stdout', text: lines(c.output) }] : []),
+    ...(c.error ? [{ output_type: 'error', ename: 'Error', evalue: '', traceback: [c.error] }] : []),
+  ];
   return JSON.stringify(
     {
       nbformat: 4,
@@ -52,7 +57,7 @@ export function toIpynb(cells: { title: string; code: string }[]): string {
       metadata: { language_info: { name: 'python' } },
       cells: cells.flatMap((c, i) => [
         { cell_type: 'markdown', id: `m${i}`, metadata: {}, source: [`## ${c.title}`] },
-        { cell_type: 'code', id: `c${i}`, metadata: {}, execution_count: null, outputs: [], source: lines(c.code) },
+        { cell_type: 'code', id: `c${i}`, metadata: {}, execution_count: null, outputs: outputs(c), source: lines(c.code) },
       ]),
     },
     null,

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { ProjectItem } from '@/lib/project-items';
@@ -9,6 +10,8 @@ export interface ItemView {
   text?: string;
   url?: string;
   isImage?: boolean;
+  /** storage path of an uploaded .ipynb, which the teacher can open in the notebook viewer */
+  notebookPath?: string;
 }
 
 // One tickbox per delivery item; each tick is saved immediately.
@@ -44,7 +47,7 @@ export function ItemChecks({
         סימון פריטים · {done}/{views.length}
       </div>
       <ul className="space-y-2">
-        {views.map(({ item, text, url, isImage }) => (
+        {views.map(({ item, text, url, isImage, notebookPath }) => (
           <li key={item.key} className="rounded-lg border p-2.5 text-sm">
             <label className="flex cursor-pointer items-start gap-2">
               <input
@@ -72,9 +75,19 @@ export function ItemChecks({
                 </a>
               )}
               {url && !isImage && (
-                <a href={url} target="_blank" rel="noreferrer" className="inline-block rounded-lg border px-3 py-1 hover:bg-fd-accent">
-                  הקובץ שהוגש
-                </a>
+                <div className="flex flex-wrap gap-2">
+                  {notebookPath && (
+                    <Link
+                      href={`/admin/notebook?path=${encodeURIComponent(notebookPath)}`}
+                      className="inline-block rounded-lg bg-fd-primary px-3 py-1 text-fd-primary-foreground"
+                    >
+                      צפייה ב-notebook
+                    </Link>
+                  )}
+                  <a href={url} target="_blank" rel="noreferrer" className="inline-block rounded-lg border px-3 py-1 hover:bg-fd-accent">
+                    הקובץ שהוגש
+                  </a>
+                </div>
               )}
             </div>
           </li>

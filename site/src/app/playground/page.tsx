@@ -2,6 +2,7 @@ import { HomeLayout } from 'fumadocs-ui/layouts/home';
 import { baseOptions } from '@/lib/layout.shared';
 import { PythonNotebook } from '@/components/python-notebook';
 import { project1Cells } from '@/lib/project1-cells';
+import { projectItems } from '@/lib/project-items';
 
 export const metadata = {
   title: 'סביבת הרצה · פרויקט 1',
@@ -21,7 +22,11 @@ export default function PlaygroundPage() {
             <a className="text-fd-primary underline" href="/docs/projects/project-01-guide">דף ההנחיה</a>.
           </p>
         </header>
-        <PythonNotebook cells={project1Cells} storageKey="py-notebook-project1" />
+        <PythonNotebook
+          cells={project1Cells}
+          storageKey="py-notebook-project1"
+          submitTo={{ assignmentId: projectItems[1].assignmentId, itemKey: 'run', projectHref: '/docs/projects/project-01' }}
+        />
       </main>
     </HomeLayout>
   );
