@@ -12,6 +12,7 @@ import type { Metadata } from 'next';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { getPageImageUrl, getPageMarkdownUrl } from '@/lib/shared';
 import { LessonHeader } from '@/components/lesson-header';
+import { LessonVideo } from '@/components/lesson-video';
 import { HomeworkSubmit } from '@/components/homework-submit';
 import { ProjectSubmit } from '@/components/project-submit';
 
@@ -37,6 +38,7 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
         hasHomework={Boolean(page.data.hasHomework)}
         github={page.data.github}
       />
+      {page.data.kind === 'lesson' && page.data.lesson && <LessonVideo key={page.data.lesson} lesson={page.data.lesson} />}
       <div className="flex flex-row gap-2 items-center border-b pb-6">
         <MarkdownCopyButton markdownUrl={markdownUrl} />
       </div>
