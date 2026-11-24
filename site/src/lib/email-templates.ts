@@ -1,5 +1,6 @@
 import { hebrewDate } from './dates';
-import { daysBetween } from './reminders';
+import { parseDriveLink } from './drive';
+import { daysBetween, todayInIsrael } from './reminders';
 
 /** Placeholders the teacher can put in a subject or body. Each is filled per student when sending. */
 export const TEMPLATE_VARS = [
@@ -8,6 +9,15 @@ export const TEMPLATE_VARS = [
   { key: 'תאריך_שיעור_הבא', label: 'תאריך השיעור הבא', sample: 'יום שלישי, 10 בנובמבר' },
   { key: 'משימות_חסרות', label: 'משימות שעוד לא הוגשו', sample: '- שיעורי בית 3\n- פרויקט 1' },
   { key: 'קישור', label: 'קישור לאזור האישי', sample: 'https://…/dashboard' },
+] as const;
+
+/** Placeholders about the one lesson the teacher picks for the message (the same for every student). */
+export const LESSON_VARS = [
+  { key: 'שיעור', label: 'שם השיעור שנבחר', sample: 'שיעור 4 – Embeddings' },
+  { key: 'קישור_לסרטון', label: 'קישור לסרטון', sample: 'https://drive.google.com/…' },
+  { key: 'קישור_לשיעור', label: 'קישור לדף השיעור', sample: 'https://…/docs/lessons/lesson-04' },
+  { key: 'קישור_לשיעורי_בית', label: 'קישור לשיעורי הבית', sample: 'https://…/docs/lessons/lesson-04/homework' },
+  { key: 'מועד_הגשה', label: 'מועד הגשה', sample: 'יום שלישי, 10 בנובמבר' },
 ] as const;
 
 export type Vars = Record<string, string>;
@@ -21,8 +31,22 @@ export function renderTemplate(text: string, vars: Vars) {
 
 /** Placeholders in the text that are not one of the known variables. */
 export function unknownPlaceholders(text: string) {
-  const known = new Set<string>(TEMPLATE_VARS.map((v) => v.key));
+  const known = new Set<string>([...TEMPLATE_VARS, ...LESSON_VARS].map((v) => v.key));
   return [...new Set([...text.matchAll(TOKEN)].map((m) => m[1]).filter((k) => !known.has(k)))];
+}
+
+/** Which lesson placeholders the text uses. */
+export function lessonPlaceholders(text: string) {
+  const lessonKeys = new Set<string>(LESSON_VARS.map((v) => v.key));
+  return [...new Set([...text.matchAll(TOKEN)].map((m) => m[1]).filter((k) => lessonKeys.has(k)))];
+}
+
+/** Why the text cannot be sent about this lesson yet, or null when it can. */
+export function lessonProblem(text: string, lesson: { video_url: string | null } | undefined): 'no-lesson' | 'no-video' | null {
+  const used = lessonPlaceholders(text);
+  if (!used.length) return null;
+  if (!lesson) return 'no-lesson';
+  return used.includes('קישור_לסרטון') && !parseDriveLink(lesson.video_url) ? 'no-video' : null;
 }
 
 export interface EmailTemplate {
@@ -34,6 +58,24 @@ export interface EmailTemplate {
 }
 
 export const BUILTIN_TEMPLATES: EmailTemplate[] = [
+  {
+    id: 'builtin:send-lesson',
+    name: 'שליחת שיעור: סרטון ושיעורי בית',
+    subject: 'הסרטון ושיעורי הבית: {{שיעור}}',
+    body:
+      'היי {{שם}},\n\nמצורפים הסרטון ושיעורי הבית של {{שיעור}}.\n\n' +
+      'סרטון השיעור:\n{{קישור_לסרטון}}\n\n' +
+      'חומר השיעור באתר:\n{{קישור_לשיעור}}\n\n' +
+      'שיעורי הבית והגשה:\n{{קישור_לשיעורי_בית}}\n\n' +
+      'מה עושות:\n' +
+      '1. צופות בסרטון ועוברות על חומר השיעור.\n' +
+      '2. עושות את שיעורי הבית ומעלות את הקוד ל-Git.\n' +
+      '3. נכנסות לדף שיעורי הבית באתר, מדביקות את הקישור ל-Git ומצרפות צילום מסך של התוצאה.\n' +
+      '4. לוחצות על "הגשה".\n\n' +
+      'מועד ההגשה: {{מועד_הגשה}}\n\n' +
+      'אם משהו לא ברור, אפשר לכתוב לי.\nבהצלחה!',
+    builtin: true,
+  },
   {
     id: 'builtin:missing',
     name: 'תזכורת: משימות שלא הוגשו',
@@ -76,6 +118,32 @@ export interface AssignmentLite {
   lesson_id: number | null;
   title: string;
   due_at: string | null;
+}
+
+/** The placeholder values for the lesson the message is about. */
+export function lessonVars(o: {
+  lesson: LessonLite & { video_url: string | null };
+  lessons: LessonLite[];
+  assignments: AssignmentLite[];
+  origin: string;
+}): Vars {
+  const { lesson } = o;
+  const page = `${o.origin}/docs/lessons/lesson-${String(lesson.id).padStart(2, '0')}`;
+  const due = o.assignments.find((a) => a.lesson_id === lesson.id && a.due_at)?.due_at;
+  const next = o.lessons.find((l) => l.id === lesson.id + 1);
+  return {
+    שיעור: `שיעור ${lesson.id} – ${lesson.title}`,
+    קישור_לסרטון: parseDriveLink(lesson.video_url)?.url ?? '',
+    קישור_לשיעור: page,
+    קישור_לשיעורי_בית: `${page}/homework`,
+    מועד_הגשה: due
+      ? hebrewDate(todayInIsrael(new Date(due)))
+      : !next
+        ? 'עוד לא נקבע'
+        : next.held_on
+          ? `לפני השיעור הבא, ${hebrewDate(next.held_on)}`
+          : 'לפני השיעור הבא',
+  };
 }
 
 /** Assignments the student has not submitted although their date has passed (due date, or the lesson was held). */

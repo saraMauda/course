@@ -1,11 +1,15 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import {
   BUILTIN_TEMPLATES,
+  LESSON_VARS,
   TEMPLATE_VARS,
+  lessonPlaceholders,
+  lessonProblem,
   renderTemplate,
   unknownPlaceholders,
   type EmailTemplate,
@@ -20,6 +24,13 @@ export interface ComposerStudent {
   vars: Vars;
 }
 
+export interface ComposerLesson {
+  id: number;
+  title: string;
+  video_url: string | null;
+  vars: Vars;
+}
+
 type Result = { sent: number; failed: { name: string; reason: string }[] } | { error: string };
 
 const control = 'rounded-lg border bg-fd-background px-3 py-1.5 text-sm';
@@ -28,6 +39,7 @@ const smallBtn = 'rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-fd-
 export function EmailComposer({
   students,
   assignments,
+  lessons,
   saved,
   preselected,
   initialTemplate,
@@ -36,6 +48,7 @@ export function EmailComposer({
 }: {
   students: ComposerStudent[];
   assignments: { id: number; title: string }[];
+  lessons: ComposerLesson[];
   saved: EmailTemplate[];
   preselected: string[];
   initialTemplate?: string;
@@ -53,6 +66,7 @@ export function EmailComposer({
   const [picked, setPicked] = useState<Set<string>>(new Set(preselected.filter((id) => students.some((s) => s.id === id))));
   const [q, setQ] = useState('');
   const [missingFor, setMissingFor] = useState<number>(assignments[0]?.id ?? 0);
+  const [lessonId, setLessonId] = useState(0);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [note, setNote] = useState('');
@@ -65,9 +79,13 @@ export function EmailComposer({
   const shown = students.filter((s) => !q.trim() || s.name.toLowerCase().includes(q.trim().toLowerCase()));
   const chosen = students.filter((s) => picked.has(s.id));
   const sample = chosen[0];
-  const sampleVars = sample?.vars ?? Object.fromEntries(TEMPLATE_VARS.map((v) => [v.key, v.sample]));
+  const lesson = lessons.find((l) => l.id === lessonId);
+  const samples = (list: readonly { key: string; sample: string }[]): Vars => Object.fromEntries(list.map((v) => [v.key, v.sample]));
+  const sampleVars = { ...(lesson?.vars ?? samples(LESSON_VARS)), ...(sample?.vars ?? samples(TEMPLATE_VARS)) };
+  const usesLesson = lessonPlaceholders(subject + '\n' + body).length > 0;
+  const problem = lessonProblem(subject + '\n' + body, lesson);
   const unknown = unknownPlaceholders(subject + '\n' + body);
-  const canSend = smtpReady && chosen.length > 0 && subject.trim() && body.trim() && unknown.length === 0 && !busy;
+  const canSend = smtpReady && chosen.length > 0 && subject.trim() && body.trim() && unknown.length === 0 && !problem && !busy;
 
   const toggle = (id: string) =>
     setPicked((p) => {
@@ -129,14 +147,15 @@ export function EmailComposer({
   }
 
   async function send() {
-    if (!window.confirm(`לשלוח מייל ל-${chosen.length} תלמידות?`)) return;
+    const about = usesLesson && lesson ? ` על שיעור ${lesson.id}` : '';
+    if (!window.confirm(`לשלוח מייל${about} ל-${chosen.length} תלמידות?`)) return;
     setBusy(true);
     setResult(null);
     try {
       const res = await fetch('/api/email/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: chosen.map((s) => s.id), subject, body }),
+        body: JSON.stringify({ ids: chosen.map((s) => s.id), subject, body, lessonId: usesLesson ? lessonId : undefined }),
       });
       const data = await res.json().catch(() => ({}));
       setResult(res.ok ? data : { error: res.status === 503 ? 'שליחת מיילים לא הוגדרה בשרת (SMTP)' : 'השליחה נכשלה' });
@@ -240,6 +259,33 @@ export function EmailComposer({
           </p>
         )}
 
+        {usesLesson && (
+          <div className="space-y-1.5 rounded-lg border bg-fd-muted/40 p-3 text-sm">
+            <label className="flex flex-wrap items-center gap-2">
+              <span className="font-medium">איזה שיעור לשלוח?</span>
+              <select className={`${control} min-w-0 max-w-full flex-1`} value={lessonId} onChange={(e) => setLessonId(Number(e.target.value))}>
+                <option value={0}>בחירת שיעור</option>
+                {lessons.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    שיעור {l.id} · {l.title}
+                    {l.video_url ? '' : ' (אין סרטון)'}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {problem === 'no-lesson' && <p className="text-amber-700 dark:text-amber-400">צריך לבחור שיעור לפני השליחה.</p>}
+            {problem === 'no-video' && (
+              <p role="alert" className="text-red-600">
+                לשיעור הזה עוד אין סרטון.{' '}
+                <Link href="/admin/lessons#videos" className="underline">
+                  הוספת קישור לסרטון
+                </Link>
+                , או למחוק מההודעה את {'{{קישור_לסרטון}}'}.
+              </p>
+            )}
+          </div>
+        )}
+
         <input
           ref={subjectRef}
           className={`${control} w-full`}
@@ -269,6 +315,14 @@ export function EmailComposer({
               </button>
             ))}
           </div>
+          <div className="pt-1 text-xs text-fd-muted-foreground">פרטים של שיעור אחד, לפי השיעור שנבחר:</div>
+          <div className="flex flex-wrap gap-1.5">
+            {LESSON_VARS.map((v) => (
+              <button key={v.key} type="button" title={v.label} onClick={() => insertVar(v.key)} className="rounded-full border px-2.5 py-0.5 text-xs hover:bg-fd-accent">
+                {v.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {unknown.length > 0 && (
@@ -280,7 +334,7 @@ export function EmailComposer({
         <div className="space-y-1 rounded-lg border bg-fd-muted/40 p-3">
           <div className="text-xs text-fd-muted-foreground">תצוגה מקדימה · {sample ? `כך זה ייראה ל${sample.name || 'תלמידה הראשונה שנבחרה'}` : 'בדוגמה (עוד לא נבחרו תלמידות)'}</div>
           <div className="font-medium">{renderTemplate(subject, sampleVars) || '(בלי נושא)'}</div>
-          <p className="whitespace-pre-wrap text-sm">{renderTemplate(body, sampleVars)}</p>
+          <p className="whitespace-pre-wrap break-words text-sm">{renderTemplate(body, sampleVars)}</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">

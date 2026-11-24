@@ -17,12 +17,16 @@ export interface MailStudent {
 export async function loadMailContext(supabase: Supabase, link: string, ids?: string[]) {
   let profiles = supabase.from('profiles').select('id, full_name, approved').eq('role', 'student').order('full_name');
   if (ids) profiles = profiles.in('id', ids);
-  const [{ data: people }, { data: lessons }, { data: assignments }, { data: subs }] = await Promise.all([
+  const [{ data: people }, { data: lessonRows }, { data: assignments }, { data: subs }, { data: videos }] = await Promise.all([
     profiles,
     supabase.from('lessons').select('id, title, held_on').order('id'),
     supabase.from('assignments').select('id, lesson_id, title, due_at').order('id'),
     supabase.from('submissions').select('student_id, assignment_id'),
+    // separate query: mails keep working even before 009-lesson-video.sql was run
+    supabase.from('lessons').select('id, video_url'),
   ]);
+  const videoOf = new Map((videos ?? []).map((v) => [v.id, v.video_url as string | null]));
+  const lessons = (lessonRows ?? []).map((l) => ({ ...l, video_url: videoOf.get(l.id) ?? null }));
 
   const today = todayInIsrael();
   const now = new Date();
@@ -39,10 +43,10 @@ export async function loadMailContext(supabase: Supabase, link: string, ids?: st
       full_name: p.full_name,
       approved: p.approved,
       submitted: [...submitted],
-      vars: studentVars({ name: p.full_name, today, now, lessons: lessons ?? [], assignments: assignments ?? [], submitted, link }),
+      vars: studentVars({ name: p.full_name, today, now, lessons, assignments: assignments ?? [], submitted, link }),
     };
   });
-  return { students, assignments: assignments ?? [] };
+  return { students, lessons, assignments: assignments ?? [] };
 }
 
 /** `https://host` of the current request, for links inside emails. */

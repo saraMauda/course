@@ -2,6 +2,7 @@ import { headers } from 'next/headers';
 import { requireTeacher } from '@/lib/admin';
 import { EmailComposer } from '@/components/email-composer';
 import { loadMailContext, originOf } from '@/lib/email-data';
+import { lessonVars } from '@/lib/email-templates';
 import { smtpConfigured } from '@/lib/mailer';
 
 export const metadata = { title: 'מיילים' };
@@ -13,7 +14,7 @@ export default async function EmailPage({ searchParams }: { searchParams: Promis
   const { to, template } = await searchParams;
 
   const origin = originOf(await headers());
-  const [{ students, assignments }, templates, log] = await Promise.all([
+  const [{ students, lessons, assignments }, templates, log] = await Promise.all([
     loadMailContext(supabase, `${origin}/dashboard`),
     supabase.from('email_templates').select('id, name, subject, body').order('created_at', { ascending: false }),
     supabase.from('email_log').select('id, student_id, subject, status, sent_at').order('sent_at', { ascending: false }).limit(30),
@@ -32,6 +33,7 @@ export default async function EmailPage({ searchParams }: { searchParams: Promis
       <EmailComposer
         students={students.map((s) => ({ id: s.id, name: s.full_name, approved: s.approved, submitted: s.submitted, vars: s.vars }))}
         assignments={assignments.map((a) => ({ id: a.id, title: a.title }))}
+        lessons={lessons.map((l) => ({ id: l.id, title: l.title, video_url: l.video_url, vars: lessonVars({ lesson: l, lessons, assignments, origin }) }))}
         saved={(templates.data ?? []).map((t) => ({ id: `db:${t.id}`, name: t.name, subject: t.subject, body: t.body }))}
         preselected={(to ?? '').split(',').filter(Boolean)}
         initialTemplate={template}

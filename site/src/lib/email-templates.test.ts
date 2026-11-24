@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { renderTemplate, unknownPlaceholders, missingAssignments, nextLesson, studentVars, TEMPLATE_VARS } from './email-templates';
+import {
+  BUILTIN_TEMPLATES,
+  LESSON_VARS,
+  TEMPLATE_VARS,
+  lessonPlaceholders,
+  lessonProblem,
+  lessonVars,
+  missingAssignments,
+  nextLesson,
+  renderTemplate,
+  studentVars,
+  unknownPlaceholders,
+} from './email-templates';
 import { weeklyDates, addDays } from './dates';
 
 const lessons = [
@@ -45,6 +57,46 @@ describe('studentVars', () => {
     expect(v.שם).toBe('תלמידה');
     expect(v.שיעור_הבא).toBe('עוד לא נקבע');
     expect(v.משימות_חסרות).toBe('אין, הכול הוגש');
+  });
+});
+
+describe('lesson mail', () => {
+  const video_url = 'https://drive.google.com/file/d/1AbC-dEf_GhIjKlMnOp/view';
+  const vars = (id: number) =>
+    lessonVars({ lesson: { ...lessons.find((l) => l.id === id)!, video_url }, lessons, assignments, origin: 'https://site.test' });
+  const t = BUILTIN_TEMPLATES.find((x) => x.id === 'builtin:send-lesson')!;
+  const text = t.subject + '\n' + t.body;
+
+  it('documents every variable it can fill', () => {
+    expect(Object.keys(vars(1)).sort()).toEqual(LESSON_VARS.map((v) => v.key).sort());
+  });
+  it('builds the links of the chosen lesson', () => {
+    expect(vars(2)).toMatchObject({
+      שיעור: 'שיעור 2 – Prompting',
+      קישור_לסרטון: video_url,
+      קישור_לשיעור: 'https://site.test/docs/lessons/lesson-02',
+      קישור_לשיעורי_בית: 'https://site.test/docs/lessons/lesson-02/homework',
+    });
+  });
+  it('takes the due date, then the next lesson, then a general wording', () => {
+    expect(vars(3).מועד_הגשה).toContain('1 בנובמבר');
+    expect(vars(1).מועד_הגשה).toMatch(/^לפני השיעור הבא, .*10 בנובמבר/);
+    expect(vars(2).מועד_הגשה).toBe('לפני השיעור הבא');
+    const last = { ...lessons[1], video_url };
+    expect(lessonVars({ lesson: last, lessons: [lessons[1]], assignments: [], origin: '' }).מועד_הגשה).toBe('עוד לא נקבע');
+  });
+  it('fills the built-in template completely', () => {
+    const student = studentVars({ name: 'דנה', today: '2026-11-05', now, lessons, assignments, submitted: new Set(), link: 'L' });
+    expect(unknownPlaceholders(text)).toEqual([]);
+    expect(renderTemplate(text, { ...vars(1), ...student })).not.toContain('{{');
+  });
+  it('asks for a lesson, and for a video only when the text links to it', () => {
+    expect(lessonProblem('היי {{שם}}', undefined)).toBeNull();
+    expect(lessonProblem(text, undefined)).toBe('no-lesson');
+    expect(lessonProblem(text, { video_url: null })).toBe('no-video');
+    expect(lessonProblem(text, { video_url })).toBeNull();
+    expect(lessonProblem('{{קישור_לשיעור}}', { video_url: null })).toBeNull();
+    expect(lessonPlaceholders('{{שם}} {{שיעור}} {{ שיעור }}')).toEqual(['שיעור']);
   });
 });
 
